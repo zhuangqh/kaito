@@ -1,0 +1,62 @@
+curl http://127.0.0.1:5000/v1/completions \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "/workspace/vllm/weights",
+    "prompt": "Say this is a test",
+    "max_tokens": 7,
+    "temperature": 0
+  }'
+
+curl -X POST http://127.0.0.1:5000/chat -H "accept: application/json" -H "Content-Type: application/json" \
+  -d '{
+    "prompt": "Say this is a test"
+  }'
+
+curl -X POST http://127.0.0.1:5000/chat -H "accept: application/json" -H "Content-Type: application/json" \
+  -d '{
+    "messages": [
+      {
+        "role": "user",
+        "content": "What is kubernetes?"
+      }
+    ]
+  }'
+
+curl http://127.0.0.1:8000/v1/completions \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "facebook/opt-125m",
+    "prompt": "Say this is a test",
+    "max_tokens": 7,
+    "temperature": 0
+  }'
+
+curl http://127.0.0.1:5000/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "mymodel",
+    "messages": [
+      {
+        "role": "user",
+        "content": "write a quick sort algorithm."
+      }
+    ],
+    "temperature": 1,
+    "max_tokens":10
+  }'
+
+
+export ACR_NAME=qzhuang
+export IMAGE_NAME=opt-125m
+export VERSION=0.0.1
+export WEIGHTS_PATH=./weights/opt-125m/
+export MODEL_TYPE=text-generation
+export DOCKERFILE_PATH=./kaito/docker/presets/models/tfs/Dockerfile
+
+docker build -t $ACR_NAME.azurecr.io/$IMAGE_NAME:$VERSION \
+                --build-arg WEIGHTS_PATH=$WEIGHTS_PATH \
+                --build-arg VERSION=$VERSION \
+                --build-arg MODEL_TYPE=$MODEL_TYPE \
+                -f $DOCKERFILE_PATH .
+
+00e236667da6030f291b2fceb7468dcf6b0cfbf4 
