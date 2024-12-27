@@ -31,6 +31,7 @@ const (
 	PresetFalcon7BModel          = "falcon-7b"
 	PresetFalcon40BModel         = "falcon-40b"
 	PresetMistral7BInstructModel = "mistral-7b-instruct"
+	PresetQwen2_5Coder7BModel    = "qwen2.5-coder-7b-instruct"
 	PresetPhi2Model              = "phi-2"
 	PresetPhi3Mini128kModel      = "phi-3-mini-128k-instruct"
 	WorkspaceHashAnnotation      = "workspace.kaito.io/hash"
