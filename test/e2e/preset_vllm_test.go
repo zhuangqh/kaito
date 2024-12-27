@@ -31,7 +31,7 @@ var _ = Describe("Workspace Preset on vllm runtime", func() {
 		numOfNode := 1
 		workspaceObj := createFalconWorkspaceWithPresetPublicModeAndVLLM(numOfNode)
 
-		defer cleanupResources(workspaceObj)
+		// defer cleanupResources(workspaceObj)
 		time.Sleep(30 * time.Second)
 
 		validateCreateNode(workspaceObj, numOfNode)
@@ -127,6 +127,30 @@ var _ = Describe("Workspace Preset on vllm runtime", func() {
 
 		validateWorkspaceReadiness(workspaceObj)
 	})
+
+	It("should create a falcon workspace with adapter successfully", func() {
+		numOfNode := 1
+		workspaceObj := createFalconWorkspaceWithAdapterAndVLLM(numOfNode, validAdapters2)
+
+		defer cleanupResources(workspaceObj)
+		time.Sleep(30 * time.Second)
+
+		validateCreateNode(workspaceObj, numOfNode)
+		validateResourceStatus(workspaceObj)
+
+		time.Sleep(30 * time.Second)
+
+		validateAssociatedService(workspaceObj)
+		validateInferenceConfig(workspaceObj)
+
+		validateInferenceResource(workspaceObj, int32(numOfNode), false)
+
+		validateWorkspaceReadiness(workspaceObj)
+
+		validateInitContainers(workspaceObj, expectedInitContainers2)
+
+		validateAdapterLoadedInVLLM(workspaceObj, workspaceObj.Name, imageName2)
+	})
 })
 
 func createFalconWorkspaceWithPresetPublicModeAndVLLM(numOfNode int) *kaitov1alpha1.Workspace {
@@ -137,6 +161,20 @@ func createFalconWorkspaceWithPresetPublicModeAndVLLM(numOfNode int) *kaitov1alp
 			&metav1.LabelSelector{
 				MatchLabels: map[string]string{"kaito-workspace": "public-preset-e2e-test-falcon-vllm"},
 			}, nil, PresetFalcon7BModel, kaitov1alpha1.ModelImageAccessModePublic, nil, nil, nil)
+
+		createAndValidateWorkspace(workspaceObj)
+	})
+	return workspaceObj
+}
+
+func createFalconWorkspaceWithAdapterAndVLLM(numOfNode int, validAdapters []kaitov1alpha1.AdapterSpec) *kaitov1alpha1.Workspace {
+	workspaceObj := &kaitov1alpha1.Workspace{}
+	By("Creating a workspace CR with Falcon 7B preset public mode and vLLM", func() {
+		uniqueID := fmt.Sprint("preset-falcon-", rand.Intn(1000))
+		workspaceObj = utils.GenerateInferenceWorkspaceManifestWithVLLM(uniqueID, namespaceName, "", numOfNode, "Standard_NC6s_v3",
+			&metav1.LabelSelector{
+				MatchLabels: map[string]string{"kaito-workspace": "public-preset-e2e-test-falcon-adapter-vllm"},
+			}, nil, PresetFalcon7BModel, kaitov1alpha1.ModelImageAccessModePublic, nil, nil, validAdapters)
 
 		createAndValidateWorkspace(workspaceObj)
 	})
