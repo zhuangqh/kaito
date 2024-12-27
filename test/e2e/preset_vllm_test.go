@@ -31,7 +31,7 @@ var _ = Describe("Workspace Preset on vllm runtime", func() {
 		numOfNode := 1
 		workspaceObj := createFalconWorkspaceWithPresetPublicModeAndVLLM(numOfNode)
 
-		// defer cleanupResources(workspaceObj)
+		defer cleanupResources(workspaceObj)
 		time.Sleep(30 * time.Second)
 
 		validateCreateNode(workspaceObj, numOfNode)
