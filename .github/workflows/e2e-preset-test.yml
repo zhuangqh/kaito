@@ -219,39 +219,26 @@ jobs:
         run: |
             WORKLOAD_NAME=${{ matrix.model.workload || matrix.model.name }}
             echo "WORKLOAD_NAME=$WORKLOAD_NAME" >> $GITHUB_OUTPUT
-            echo "WORKLOAD_FILE_PREFIX=presets/workspace/test/manifests/$WORKLOAD_NAME/$WORKLOAD_NAME" >> $GITHUB_OUTPUT
-
-      - name: Create Service
-        run: |
-            kubectl apply -f ${{steps.workload.outputs.WORKLOAD_FILE_PREFIX}}-service.yaml
-      
-      - name: Retrieve External Service IP
-        id: get_ip
-        run: |
-            SERVICE_IP=$(kubectl get svc ${{steps.workload.outputs.WORKLOAD_NAME}} -o=jsonpath='{.spec.clusterIP}')
-            echo "Service IP is $SERVICE_IP"
-            echo "SERVICE_IP=$SERVICE_IP" >> $GITHUB_OUTPUT
-
-      - name: Get Resource Type
-        id: resource
-        run: |
+            WORKLOAD_FILE=$WORKLOAD_NAME.yaml
+            echo "WORKLOAD_FILE=$WORKLOAD_FILE" >> $GITHUB_OUTPUT
             RESOURCE_TYPE=$(echo "${{ matrix.model.name }}" | grep -q "llama" && echo "statefulset" || echo "deployment")
             echo "RESOURCE_TYPE=$RESOURCE_TYPE" >> $GITHUB_OUTPUT
-      
-      - name: Replace IP and Deploy Resource to K8s
-        run: |
-            POSTFIX=$(echo "${{ matrix.model.name }}" | grep -q "llama" && echo "" || echo "_${{ env.RUNTIME }}")
-            WORKLOAD_FILE=${{steps.workload.outputs.WORKLOAD_FILE_PREFIX}}$POSTFIX.yaml
 
-            sed -i "s/MASTER_ADDR_HERE/${{ steps.get_ip.outputs.SERVICE_IP }}/g" $WORKLOAD_FILE
-            sed -i "s/TAG_HERE/${{ matrix.model.tag }}/g" $WORKLOAD_FILE
-            sed -i "s/REPO_HERE/${{ secrets.ACR_AMRT_USERNAME }}/g" $WORKLOAD_FILE
+            pip install pyyaml
+            python3 presets/workspace/test/scripts/process_template.py $WORKLOAD_NAME ${{ env.RUNTIME }} \
+                --tag ${{ matrix.model.tag }} \
+                --repo ${{ secrets.ACR_AMRT_USERNAME }}.azurecr.io > $WORKLOAD_FILE
+
+            cat $WORKLOAD_FILE
+
+      - name: Create workload
+        run: |
             kubectl apply -f $WORKLOAD_FILE
 
       - name: Wait for Resource to be ready
         run: |
-            kubectl rollout status ${{steps.resource.outputs.RESOURCE_TYPE}}/${{steps.workload.outputs.WORKLOAD_NAME}} --timeout=1800s
-    
+            kubectl rollout status ${{steps.workload.outputs.RESOURCE_TYPE}}/${{steps.workload.outputs.WORKLOAD_NAME}} --timeout=1800s
+
       - name: Check Adapter Loading from Logs
         if: matrix.model.loads_adapter == true
         run: |
@@ -260,19 +247,19 @@ jobs:
 
       - name: Install testing commands
         run: |
-            kubectl exec ${{steps.resource.outputs.RESOURCE_TYPE}}/${{steps.workload.outputs.WORKLOAD_NAME}} -- apt-get update
-            kubectl exec ${{steps.resource.outputs.RESOURCE_TYPE}}/${{steps.workload.outputs.WORKLOAD_NAME}} -- apt-get install -y curl
+            kubectl exec ${{steps.workload.outputs.RESOURCE_TYPE}}/${{steps.workload.outputs.WORKLOAD_NAME}} -- apt-get update
+            kubectl exec ${{steps.workload.outputs.RESOURCE_TYPE}}/${{steps.workload.outputs.WORKLOAD_NAME}} -- apt-get install -y curl
 
       - name: Test healthz endpoint
         run: |
-            kubectl exec ${{steps.resource.outputs.RESOURCE_TYPE}}/${{steps.workload.outputs.WORKLOAD_NAME}} -- \
+            kubectl exec ${{steps.workload.outputs.RESOURCE_TYPE}}/${{steps.workload.outputs.WORKLOAD_NAME}} -- \
             curl -s http://localhost:5000/health
 
       - name: Test inference endpoint
         run: |
             echo "Testing inference for ${{ matrix.model.name }}"
             if [[ "${{ matrix.model.name }}" == *"llama"* && "${{ matrix.model.name }}" == *"-chat"* ]]; then
-                kubectl exec ${{steps.resource.outputs.RESOURCE_TYPE}}/${{steps.workload.outputs.WORKLOAD_NAME}} -- \
+                kubectl exec ${{steps.workload.outputs.RESOURCE_TYPE}}/${{steps.workload.outputs.WORKLOAD_NAME}} -- \
                 curl -s -X POST \
                 -H "Content-Type: application/json" \
                 -d '{
@@ -293,7 +280,7 @@ jobs:
                 }' \
                 http://localhost:5000/chat
             elif [[ "${{ matrix.model.name }}" == *"llama"* ]]; then
-                kubectl exec ${{steps.resource.outputs.RESOURCE_TYPE}}/${{steps.workload.outputs.WORKLOAD_NAME}} -- \
+                kubectl exec ${{steps.workload.outputs.RESOURCE_TYPE}}/${{steps.workload.outputs.WORKLOAD_NAME}} -- \
                 curl -s -X POST \
                 -H "Content-Type: application/json" \
                 -d '{
@@ -309,7 +296,7 @@ jobs:
                 }' \
                 http://localhost:5000/generate
             elif [[ "${{ env.RUNTIME }}" == *"vllm"* ]]; then
-                kubectl exec ${{steps.resource.outputs.RESOURCE_TYPE}}/${{steps.workload.outputs.WORKLOAD_NAME}} -- \
+                kubectl exec ${{steps.workload.outputs.RESOURCE_TYPE}}/${{steps.workload.outputs.WORKLOAD_NAME}} -- \
                 curl -s -X POST \
                 -H "accept: application/json" \
                 -H "Content-Type: application/json" \
@@ -328,7 +315,7 @@ jobs:
                     }' \
                 http://localhost:5000/v1/chat/completions
             else
-                kubectl exec ${{steps.resource.outputs.RESOURCE_TYPE}}/${{steps.workload.outputs.WORKLOAD_NAME}} -- \
+                kubectl exec ${{steps.workload.outputs.RESOURCE_TYPE}}/${{steps.workload.outputs.WORKLOAD_NAME}} -- \
                 curl -s -X POST \
                 -H "accept: application/json" \
                 -H "Content-Type: application/json" \
@@ -370,9 +357,9 @@ jobs:
         if: always()
         run: |
             # Only proceed if RESOURCE_TYPE is set (else resource wasn't created)
-            if [ -n "${{ steps.resource.outputs.RESOURCE_TYPE }}" ]; then
+            if [ -n "${{ steps.workload.outputs.RESOURCE_TYPE }}" ]; then
                 # Use RESOURCE_TYPE from the previous step
-                RESOURCE_TYPE=${{ steps.resource.outputs.RESOURCE_TYPE }}
+                RESOURCE_TYPE=${{ steps.workload.outputs.RESOURCE_TYPE }}
                 
                 # Check and Delete K8s Resource (Deployment or StatefulSet)
                 if kubectl get $RESOURCE_TYPE ${{steps.workload.outputs.WORKLOAD_NAME}} > /dev/null 2>&1; then
