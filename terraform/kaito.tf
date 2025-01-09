@@ -26,7 +26,7 @@ resource "azurerm_federated_identity_credential" "kaito" {
 # Install the gpu-provisioner chart
 resource "helm_release" "gpu_provisioner" {
   name             = "gpu-provisioner"
-  chart            = "https://raw.githubusercontent.com/kaito-project/kaito/refs/heads/gh-pages/charts/kaito/gpu-provisioner-${var.kaito_gpu_provisioner_version}.tgz"
+  chart            = "https://raw.githubusercontent.com/Azure/gpu-provisioner/refs/heads/gh-pages/charts/gpu-provisioner-${var.kaito_gpu_provisioner_version}.tgz"
   namespace        = "gpu-provisioner"
   create_namespace = true
 
