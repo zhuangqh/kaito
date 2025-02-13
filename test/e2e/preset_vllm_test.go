@@ -185,7 +185,7 @@ var _ = Describe("Workspace Preset on vllm runtime", func() {
 		validateCompletionsEndpoint(workspaceObj)
 	})
 
-	It("should create a falcon workspace with adapter successfully", func() {
+	It("should create a falcon workspace with adapter successfully", utils.GinkgoLabelFastCheck, func() {
 		numOfNode := 1
 		workspaceObj := createFalconWorkspaceWithAdapterAndVLLM(numOfNode, validAdapters2)
 
