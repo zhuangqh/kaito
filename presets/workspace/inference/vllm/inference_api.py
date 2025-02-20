@@ -13,7 +13,7 @@ import torch
 from vllm.utils import FlexibleArgumentParser
 import vllm.entrypoints.openai.api_server as api_server
 from vllm.entrypoints.openai.serving_engine import LoRAModulePath
-from vllm.engine.llm_engine import (LLMEngine, EngineArgs, EngineConfig)
+from vllm.engine.llm_engine import (LLMEngine, EngineArgs, VllmConfig)
 from vllm.executor.executor_base import ExecutorBase
 
 # Initialize logger
@@ -121,29 +121,17 @@ def load_lora_adapters(adapters_dir: str) -> Optional[LoRAModulePath]:
 
     return lora_list
 
-def find_max_available_seq_len(engine_config: EngineConfig, max_probe_steps: int) -> int:
+def find_max_available_seq_len(vllm_config: VllmConfig, max_probe_steps: int) -> int:
     """
     Load model and run profiler to find max available seq len.
     """
-    # see https://github.com/vllm-project/vllm/blob/v0.6.3/vllm/engine/llm_engine.py#L335
-    executor_class = LLMEngine._get_executor_cls(engine_config)
-    if engine_config.scheduler_config.enable_chunked_prefill:
+    executor_class = LLMEngine._get_executor_cls(vllm_config)
+    if vllm_config.scheduler_config.enable_chunked_prefill:
         logger.info("Chunked Prefill is enabled, skip probing.")
-        return engine_config.model_config.max_model_len
-    executor = executor_class(
-        model_config=engine_config.model_config,
-        cache_config=engine_config.cache_config,
-        parallel_config=engine_config.parallel_config,
-        scheduler_config=engine_config.scheduler_config,
-        device_config=engine_config.device_config,
-        lora_config=engine_config.lora_config,
-        speculative_config=engine_config.speculative_config,
-        load_config=engine_config.load_config,
-        prompt_adapter_config=engine_config.prompt_adapter_config,
-        observability_config=engine_config.observability_config,
-    )
+        return vllm_config.model_config.max_model_len
+    executor = executor_class(vllm_config=vllm_config)
 
-    res = binary_search_with_limited_steps(engine_config.model_config.max_model_len, max_probe_steps, lambda x: is_context_length_safe(executor, x))
+    res = binary_search_with_limited_steps(vllm_config.model_config.max_model_len, max_probe_steps, lambda x: is_context_length_safe(executor, x))
 
     # release memory
     del executor
@@ -223,12 +211,12 @@ def try_set_max_available_seq_len(args: argparse.Namespace):
     # read the model config from hf weights path.
     # vllm will perform different parser for different model architectures
     # and read it into a unified EngineConfig.
-    engine_config = engine_args.create_engine_config()
+    vllm_config = engine_args.create_engine_config()
 
-    max_model_len = engine_config.model_config.max_model_len
+    max_model_len = vllm_config.model_config.max_model_len
     available_seq_len = max_model_len
     logger.info("Try run profiler to find max available seq len")
-    available_seq_len = find_max_available_seq_len(engine_config, max_probe_steps)
+    available_seq_len = find_max_available_seq_len(vllm_config, max_probe_steps)
     # see https://github.com/vllm-project/vllm/blob/v0.6.3/vllm/worker/worker.py#L262
     if available_seq_len <= 0:
         raise ValueError("No available memory for the cache blocks. "
