@@ -12,7 +12,7 @@ import uvloop
 import torch
 from vllm.utils import FlexibleArgumentParser
 import vllm.entrypoints.openai.api_server as api_server
-from vllm.entrypoints.openai.serving_engine import LoRAModulePath
+from vllm.entrypoints.openai.serving_models import LoRAModulePath
 from vllm.engine.llm_engine import (LLMEngine, EngineArgs, VllmConfig)
 from vllm.executor.executor_base import ExecutorBase
 
@@ -51,7 +51,7 @@ class KAITOArgumentParser(argparse.ArgumentParser):
         }
         self.vllm_parser.set_defaults(**server_default_args)
 
-        # See https://docs.vllm.ai/en/stable/models/engine_args.html for more args
+        # See https://docs.vllm.ai/en/stable/serving/engine_args.html for more args
         engine_default_args = {
             "model": "/workspace/vllm/weights",
             "cpu_offload_gb": 0,
@@ -176,11 +176,10 @@ def is_context_length_safe(executor: ExecutorBase, context_length: int) -> bool:
     """
     # Profile memory usage with max_num_sequences sequences and the total
     # number of tokens equal to max_num_batched_tokens.
-    # see https://github.com/vllm-project/vllm/blob/v0.6.3/vllm/worker/model_runner.py#L1232
     executor.scheduler_config.max_num_batched_tokens = context_length
     try:
         logger.info(f"Try to determine available gpu blocks for context length {context_length}")
-        # see https://github.com/vllm-project/vllm/blob/v0.6.3/vllm/engine/llm_engine.py#L477
+        # see https://github.com/vllm-project/vllm/blob/v0.7.2/vllm/engine/llm_engine.py#L416
         available_gpu_blocks, _ = executor.determine_num_available_blocks()
     except torch.OutOfMemoryError as e:
         return False    
@@ -217,7 +216,7 @@ def try_set_max_available_seq_len(args: argparse.Namespace):
     available_seq_len = max_model_len
     logger.info("Try run profiler to find max available seq len")
     available_seq_len = find_max_available_seq_len(vllm_config, max_probe_steps)
-    # see https://github.com/vllm-project/vllm/blob/v0.6.3/vllm/worker/worker.py#L262
+    # see https://github.com/vllm-project/vllm/blob/v0.7.2/vllm/worker/worker.py#L539
     if available_seq_len <= 0:
         raise ValueError("No available memory for the cache blocks. "
                         "Try increasing `gpu_memory_utilization` when "
