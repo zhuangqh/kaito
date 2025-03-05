@@ -86,10 +86,20 @@ var _ = Describe("RAGEngine", func() {
 		validateInferenceandRAGResource(ragengineObj.ObjectMeta, int32(numOfReplica), false)
 		validateRAGEngineCondition(ragengineObj, string(kaitov1alpha1.RAGEngineConditionTypeSucceeded), "ragengine to be ready")
 
-		createAndValidateIndexPod(ragengineObj)
-		searchQuerySuccess := "\\n\\nKaito is an operator that is designed to automate the AI/ML model inference or tuning workload in a Kubernetes cluster."
-		createAndValidateQueryPod(ragengineObj, searchQuerySuccess, true)
+		err := createAndValidateIndexPod(ragengineObj)
+		Expect(err).NotTo(HaveOccurred(), "Failed to create and validate IndexPod")
 
+		searchQuerySuccess := "\\n\\nKaito is an operator that is designed to automate the AI/ML model inference or tuning workload in a Kubernetes cluster."
+		err = createAndValidateQueryPod(ragengineObj, searchQuerySuccess, true)
+		Expect(err).NotTo(HaveOccurred(), "Failed to create and validate QueryPod")
+
+		persistLogSuccess := "Successfully persisted index kaito"
+		err = createAndValidatePersistPod(ragengineObj, persistLogSuccess)
+		Expect(err).NotTo(HaveOccurred(), "Failed to create and validate PersistPod")
+
+		loadLogSuccess := "Successfully loaded index kaito"
+		err = createAndValidateLoadPod(ragengineObj, loadLogSuccess)
+		Expect(err).NotTo(HaveOccurred(), "Failed to create and validate LoadPod")
 	})
 
 	It("should create RAG with localembedding and kaito VLLM workspace successfully", func() {
@@ -126,10 +136,19 @@ var _ = Describe("RAGEngine", func() {
 		validateInferenceandRAGResource(ragengineObj.ObjectMeta, int32(numOfReplica), false)
 		validateRAGEngineCondition(ragengineObj, string(kaitov1alpha1.RAGEngineConditionTypeSucceeded), "ragengine to be ready")
 
-		createAndValidateIndexPod(ragengineObj)
+		err := createAndValidateIndexPod(ragengineObj)
+		Expect(err).NotTo(HaveOccurred(), "Failed to create and validate IndexPod")
 		searchQuerySuccess := "\\nKaito is an operator that automates the AI/ML model inference or tuning workload in a Kubernetes cluster.\\n\\n\\n"
-		createAndValidateQueryPod(ragengineObj, searchQuerySuccess, false)
+		err = createAndValidateQueryPod(ragengineObj, searchQuerySuccess, false)
+		Expect(err).NotTo(HaveOccurred(), "Failed to create and validate QueryPod")
 
+		persistLogSuccess := "Successfully persisted index kaito"
+		err = createAndValidatePersistPod(ragengineObj, persistLogSuccess)
+		Expect(err).NotTo(HaveOccurred(), "Failed to create and validate PersistPod")
+
+		loadLogSuccess := "Successfully loaded index kaito"
+		err = createAndValidateLoadPod(ragengineObj, loadLogSuccess)
+		Expect(err).NotTo(HaveOccurred(), "Failed to create and validate LoadPod")
 	})
 
 })
@@ -455,8 +474,20 @@ func deleteWorkspace(workspaceObj *kaitov1beta1.Workspace) error {
 }
 
 func createAndValidateIndexPod(ragengineObj *kaitov1alpha1.RAGEngine) error {
+	podName := "index-pod"
 	By("Creating index pod", func() {
-		pod := GenerateIndexPodManifest(ragengineObj.Namespace, ragengineObj.Name)
+		curlCommand := `curl -X POST ` + ragengineObj.Name + `:80/index \
+-H "Content-Type: application/json" \
+-d '{
+    "index_name": "kaito",
+    "documents": [
+        {
+            "text": "Kaito is an operator that automates the AI/ML model inference or tuning workload in a Kubernetes cluster",
+            "metadata": {"author": "kaito", "category": "kaito"}
+        }
+    ]
+}'`
+		pod := GenerateCURLPodManifest(podName, curlCommand, ragengineObj.Namespace)
 		Eventually(func() error {
 			return utils.TestingCluster.KubeClient.Create(ctx, pod, &client.CreateOptions{})
 		}, utils.PollTimeout, utils.PollInterval).
@@ -471,88 +502,26 @@ func createAndValidateIndexPod(ragengineObj *kaitov1alpha1.RAGEngine) error {
 				return false
 			}
 
-			logs, err := utils.GetPodLogs(coreClient, ragengineObj.Namespace, "indexpod", "")
+			logs, err := utils.GetPodLogs(coreClient, ragengineObj.Namespace, podName, "")
 			if err != nil {
-				GinkgoWriter.Printf("Failed to get logs from pod %s: %v\n", "indexpod", err)
+				GinkgoWriter.Printf("Failed to get logs from pod %s: %v\n", podName, err)
 				return false
 			}
 
 			return strings.Contains(logs, "Kaito is an operator that automates the AI/ML model inference or tuning workload in a Kubernetes cluster")
-		}, 2*time.Minute, utils.PollInterval).Should(BeTrue(), "Failed to wait for index logs to be ready")
+		}, 4*time.Minute, utils.PollInterval).Should(BeTrue(), "Failed to wait for index logs to be ready")
 	})
 
 	return nil
 }
 
 func createAndValidateQueryPod(ragengineObj *kaitov1alpha1.RAGEngine, expectedSearchQueries string, remote bool) error {
+	podName := "query-pod"
 	By("Creating query pod", func() {
-		pod := GenerateQueryPodManifest(ragengineObj.Namespace, ragengineObj.Name, remote)
-		Eventually(func() error {
-			return utils.TestingCluster.KubeClient.Create(ctx, pod, &client.CreateOptions{})
-		}, utils.PollTimeout, utils.PollInterval).
-			Should(Succeed(), "Failed to create query pod")
-	})
-
-	By("Checking the query logs", func() {
-		Eventually(func() bool {
-			coreClient, err := utils.GetK8sClientset()
-			if err != nil {
-				GinkgoWriter.Printf("Failed to create core client: %v\n", err)
-				return false
-			}
-
-			logs, err := utils.GetPodLogs(coreClient, ragengineObj.Namespace, "querypod", "")
-			if err != nil {
-				GinkgoWriter.Printf("Failed to get logs from pod %s: %v\n", "querypod", err)
-				return false
-			}
-
-			return strings.Contains(logs, expectedSearchQueries)
-		}, 2*time.Minute, utils.PollInterval).Should(BeTrue(), "Failed to wait for query logs to be ready")
-	})
-
-	return nil
-}
-
-func GenerateIndexPodManifest(namespace, serviceName string) *v1.Pod {
-
-	curlCommand := `curl -X POST ` + serviceName + `:80/index \
--H "Content-Type: application/json" \
--d '{
-    "index_name": "kaito",
-    "documents": [
-        {
-            "text": "Kaito is an operator that automates the AI/ML model inference or tuning workload in a Kubernetes cluster",
-            "metadata": {"author": "kaito", "category": "kaito"}
-        }
-    ]
-}'`
-
-	indexPod := &v1.Pod{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "indexpod",
-			Namespace: namespace,
-		},
-		Spec: v1.PodSpec{
-			RestartPolicy: v1.RestartPolicyNever,
-			Containers: []v1.Container{
-				{
-					Name:    "curl",
-					Image:   "curlimages/curl:latest",
-					Command: []string{"/bin/sh", "-c"},
-					Args:    []string{curlCommand},
-				},
-			},
-		},
-	}
-
-	return indexPod
-}
-
-func GenerateQueryPodManifest(namespace, serviceName string, remote bool) *v1.Pod { // TODO: add another model param for the remote inference service in the next PR
-	var curlCommand string
-	if remote {
-		curlCommand = `curl -X POST ` + serviceName + `:80/query \
+		var curlCommand string
+		// Note: Request without model specified should still succeed with vLLM. As model name is dynamically fetched.
+		if remote {
+			curlCommand = `curl -X POST ` + ragengineObj.Name + `:80/query \
 -H "Content-Type: application/json" \
 -d '{
 	"index_name": "kaito",
@@ -562,8 +531,8 @@ func GenerateQueryPodManifest(namespace, serviceName string, remote bool) *v1.Po
       "temperature": 0
     }
 }'`
-	} else {
-		curlCommand = `curl -X POST ` + serviceName + `:80/query \
+		} else {
+			curlCommand = `curl -X POST ` + ragengineObj.Name + `:80/query \
 -H "Content-Type: application/json" \
 -d '{
 	"index_name": "kaito",
@@ -574,11 +543,137 @@ func GenerateQueryPodManifest(namespace, serviceName string, remote bool) *v1.Po
       "temperature": 0
     }
 }'`
-	}
+		}
+		pod := GenerateCURLPodManifest(podName, curlCommand, ragengineObj.Namespace)
+		Eventually(func() error {
+			return utils.TestingCluster.KubeClient.Create(ctx, pod, &client.CreateOptions{})
+		}, utils.PollTimeout, utils.PollInterval).
+			Should(Succeed(), "Failed to create query pod")
+	})
 
-	queryPod := &v1.Pod{
+	By("Waiting for query pod to be running", func() {
+		Eventually(func() bool {
+			pod := &v1.Pod{}
+			err := utils.TestingCluster.KubeClient.Get(ctx, client.ObjectKey{
+				Namespace: ragengineObj.Namespace,
+				Name:      podName,
+			}, pod)
+			if err != nil {
+				return false
+			}
+			return pod.Status.Phase == v1.PodRunning || pod.Status.Phase == v1.PodSucceeded
+		}, 5*time.Minute, utils.PollInterval).Should(BeTrue(), "Query pod did not reach Running or Succeeded state")
+	})
+
+	By("Checking the query logs", func() {
+		Eventually(func() bool {
+			coreClient, err := utils.GetK8sClientset()
+			if err != nil {
+				GinkgoWriter.Printf("Failed to create core client: %v\n", err)
+				return false
+			}
+			logs, err := utils.GetPodLogs(coreClient, ragengineObj.Namespace, podName, "")
+			if err != nil {
+				GinkgoWriter.Printf("Failed to get logs from pod %s: %v\n", podName, err)
+				return false
+			}
+			return strings.Contains(logs, expectedSearchQueries)
+		}, 4*time.Minute, utils.PollInterval).Should(BeTrue(), "Failed to wait for query logs to be ready")
+	})
+
+	return nil
+}
+
+func createAndValidatePersistPod(ragengineObj *kaitov1alpha1.RAGEngine, expectedPersistResult string) error {
+	podName := "persist-pod"
+	By("Creating Persist pod", func() {
+		curlCommand := `curl -X POST ` + ragengineObj.Name + `:80/persist/kaito`
+		pod := GenerateCURLPodManifest(podName, curlCommand, ragengineObj.Namespace)
+		Eventually(func() error {
+			return utils.TestingCluster.KubeClient.Create(ctx, pod, &client.CreateOptions{})
+		}, utils.PollTimeout, utils.PollInterval).
+			Should(Succeed(), "Failed to create persist pod")
+	})
+
+	By("Waiting for persist pod to be running", func() {
+		Eventually(func() bool {
+			pod := &v1.Pod{}
+			err := utils.TestingCluster.KubeClient.Get(ctx, client.ObjectKey{
+				Namespace: ragengineObj.Namespace,
+				Name:      podName,
+			}, pod)
+			if err != nil {
+				return false
+			}
+			return pod.Status.Phase == v1.PodRunning || pod.Status.Phase == v1.PodSucceeded
+		}, 5*time.Minute, utils.PollInterval).Should(BeTrue(), "Persist pod did not reach Running or Succeeded state")
+	})
+
+	By("Checking the persist logs", func() {
+		Eventually(func() bool {
+			coreClient, err := utils.GetK8sClientset()
+			if err != nil {
+				GinkgoWriter.Printf("Failed to create core client: %v\n", err)
+				return false
+			}
+			logs, err := utils.GetPodLogs(coreClient, ragengineObj.Namespace, podName, "")
+			if err != nil {
+				GinkgoWriter.Printf("Failed to get logs from pod %s: %v\n", podName, err)
+				return false
+			}
+			return strings.Contains(logs, expectedPersistResult)
+		}, 4*time.Minute, utils.PollInterval).Should(BeTrue(), "Failed to wait for persist logs to be ready")
+	})
+
+	return nil
+}
+
+func createAndValidateLoadPod(ragengineObj *kaitov1alpha1.RAGEngine, expectedLoadResult string) error {
+	podName := "load-pod"
+	By("Creating Load Pod", func() {
+		curlCommand := `curl -X POST ` + ragengineObj.Name + `:80/load/kaito?overwrite=True`
+		pod := GenerateCURLPodManifest(podName, curlCommand, ragengineObj.Namespace)
+		Eventually(func() error {
+			return utils.TestingCluster.KubeClient.Create(ctx, pod, &client.CreateOptions{})
+		}, utils.PollTimeout, utils.PollInterval).
+			Should(Succeed(), "Failed to create load pod")
+	})
+	// Wait for the pod to be running before attempting to fetch logs.
+	By("Waiting for load pod to be running", func() {
+		Eventually(func() bool {
+			pod := &v1.Pod{}
+			err := utils.TestingCluster.KubeClient.Get(ctx, client.ObjectKey{
+				Namespace: ragengineObj.Namespace,
+				Name:      podName,
+			}, pod)
+			if err != nil {
+				return false
+			}
+			return pod.Status.Phase == v1.PodRunning || pod.Status.Phase == v1.PodSucceeded
+		}, 5*time.Minute, utils.PollInterval).Should(BeTrue(), "Load pod did not reach Running or Succeeded state")
+	})
+	By("Checking the load logs", func() {
+		Eventually(func() bool {
+			coreClient, err := utils.GetK8sClientset()
+			if err != nil {
+				GinkgoWriter.Printf("Failed to create core client: %v\n", err)
+				return false
+			}
+			logs, err := utils.GetPodLogs(coreClient, ragengineObj.Namespace, podName, "")
+			if err != nil {
+				GinkgoWriter.Printf("Failed to get logs from pod %s: %v\n", podName, err)
+				return false
+			}
+			return strings.Contains(logs, expectedLoadResult)
+		}, 4*time.Minute, utils.PollInterval).Should(BeTrue(), "Failed to wait for load logs to be ready")
+	})
+	return nil
+}
+
+func GenerateCURLPodManifest(podName, curlCommand, namespace string) *v1.Pod {
+	return &v1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "querypod",
+			Name:      podName,
 			Namespace: namespace,
 		},
 		Spec: v1.PodSpec{
@@ -593,8 +688,6 @@ func GenerateQueryPodManifest(namespace, serviceName string, remote bool) *v1.Po
 			},
 		},
 	}
-
-	return queryPod
 }
 
 func createAndValidateSecret() {
