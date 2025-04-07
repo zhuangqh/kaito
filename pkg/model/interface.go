@@ -5,11 +5,15 @@ package model
 import (
 	"fmt"
 	"maps"
+	"math"
 	"path"
+	"strconv"
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 
+	"github.com/kaito-project/kaito/pkg/sku"
 	"github.com/kaito-project/kaito/pkg/utils"
 )
 
@@ -27,7 +31,16 @@ const (
 	RuntimeNameHuggingfaceTransformers RuntimeName = "transformers"
 	RuntimeNameVLLM                    RuntimeName = "vllm"
 
-	ConfigfileNameVLLM = "inference_config.yaml"
+	ConfigfileNameVLLM    = "inference_config.yaml"
+	DefaultMemoryUtilVLLM = 0.9 // Default gpu memory utilization for VLLM runtime
+	UpperMemoryUtilVLLM   = 0.95
+)
+
+var (
+	// vLLM will do kvcache pre-allocation,
+	// We need to reserve enough memory for other ephemeral operations to avoid OOM.
+	// This is an empirical value.
+	ReservedNonKVCacheMemory = resource.MustParse("1.5Gi")
 )
 
 // PresetParam defines the preset inference parameters for a model.
@@ -126,8 +139,9 @@ func (v *VLLMParam) DeepCopy() VLLMParam {
 // RuntimeContext defines the runtime context for a model.
 type RuntimeContext struct {
 	RuntimeName  RuntimeName
+	GPUConfig    *sku.GPUConfig
 	ConfigVolume *corev1.VolumeMount
-	SKUNumGPUs   string
+	SKUNumGPUs   int
 	UseAdapters  bool
 }
 
@@ -160,11 +174,13 @@ func (p *PresetParam) buildVLLMInferenceCommand(rc RuntimeContext) []string {
 		p.VLLM.ModelRunParams["served-model-name"] = p.VLLM.ModelName
 	}
 	if !p.DisableTensorParallelism {
-		p.VLLM.ModelRunParams["tensor-parallel-size"] = rc.SKUNumGPUs
+		p.VLLM.ModelRunParams["tensor-parallel-size"] = strconv.Itoa(rc.SKUNumGPUs)
 	}
 	if !p.VLLM.DisallowLoRA && rc.UseAdapters {
 		p.VLLM.ModelRunParams["enable-lora"] = ""
 	}
+	gpuMemUtil := getGPUMemoryUtilForVLLM(rc.GPUConfig)
+	p.VLLM.ModelRunParams["gpu-memory-utilization"] = strconv.FormatFloat(gpuMemUtil, 'f', 2, 64)
 	if rc.ConfigVolume != nil {
 		p.VLLM.ModelRunParams["kaito-config-file"] = path.Join(rc.ConfigVolume.MountPath, ConfigfileNameVLLM)
 	}
@@ -180,4 +196,21 @@ func (p *PresetParam) Validate(rc RuntimeContext) error {
 		}
 	}
 	return nil
+}
+
+func getGPUMemoryUtilForVLLM(gpuConfig *sku.GPUConfig) float64 {
+	if gpuConfig == nil || gpuConfig.GPUMemGB <= 0 || gpuConfig.GPUCount <= 0 {
+		return DefaultMemoryUtilVLLM
+	}
+
+	gpuMem := resource.MustParse(fmt.Sprintf("%dGi", gpuConfig.GPUMemGB))
+	gpuMemPerGPU := float64(gpuMem.Value()) / float64(gpuConfig.GPUCount)
+
+	if float64(ReservedNonKVCacheMemory.Value()) >= gpuMemPerGPU {
+		// looks impossible, just prevent this case
+		return DefaultMemoryUtilVLLM
+	}
+
+	util := math.Floor((1.0-float64(ReservedNonKVCacheMemory.Value())/gpuMemPerGPU)*100) / 100
+	return math.Min(util, UpperMemoryUtilVLLM)
 }

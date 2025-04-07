@@ -304,10 +304,10 @@ func TestPrepareTuningParameters(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			t.Setenv("CLOUD_PROVIDER", consts.AzureCloudName)
 
-			commands, resources := prepareTuningParameters(ctx, tc.workspaceObj, tc.modelCommand, tc.tuningObj, "2")
+			commands, resources := prepareTuningParameters(ctx, tc.workspaceObj, tc.modelCommand, tc.tuningObj, 2)
 			assert.Equal(t, tc.expectedCommands, commands)
-			assert.Equal(t, tc.expectedRequirements.Requests, resources.Requests)
-			assert.Equal(t, tc.expectedRequirements.Limits, resources.Limits)
+			assert.True(t, tc.expectedRequirements.Requests.Name("nvidia.com/gpu", resource.DecimalSI).Equal(*resources.Requests.Name("nvidia.com/gpu", resource.DecimalSI)))
+			assert.True(t, tc.expectedRequirements.Limits.Name("nvidia.com/gpu", resource.DecimalSI).Equal(*resources.Limits.Name("nvidia.com/gpu", resource.DecimalSI)))
 		})
 	}
 }

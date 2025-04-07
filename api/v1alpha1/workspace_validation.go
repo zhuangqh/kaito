@@ -19,6 +19,7 @@ import (
 	"k8s.io/klog/v2"
 	"knative.dev/pkg/apis"
 
+	"github.com/kaito-project/kaito/pkg/model"
 	"github.com/kaito-project/kaito/pkg/utils"
 	"github.com/kaito-project/kaito/pkg/utils/consts"
 	"github.com/kaito-project/kaito/pkg/utils/plugin"
@@ -59,9 +60,10 @@ func (w *Workspace) Validate(ctx context.Context) (errs *apis.FieldError) {
 				}
 			}
 
+			runtime := GetWorkspaceRuntimeName(w)
 			// TODO: Add Adapter Spec Validation - Including DataSource Validation for Adapter
 			errs = errs.Also(w.Resource.validateCreateWithInference(w.Inference, bypassResourceChecks).ViaField("resource"),
-				w.Inference.validateCreate(ctx, w.Namespace, w.Resource.InstanceType).ViaField("inference"))
+				w.Inference.validateCreate(ctx, w.Namespace, w.Resource.InstanceType, runtime).ViaField("inference"))
 		}
 		if w.Tuning != nil {
 			// TODO: Add validate resource based on Tuning Spec
@@ -308,17 +310,16 @@ func (r *ResourceSpec) validateCreateWithInference(inference *InferenceSpec, byp
 		errs = errs.Also(apis.ErrGeneric(fmt.Sprintf("Failed to get SKU handler: %v", err), "instanceType"))
 		return errs
 	}
-	gpuConfigs := skuHandler.GetGPUConfigs()
 
 	// Check if instancetype exists in our SKUs map for the particular cloud provider
-	if skuConfig, exists := gpuConfigs[instanceType]; exists {
+	if skuConfig := skuHandler.GetGPUConfigBySKU(instanceType); skuConfig != nil {
 		if presetName != "" {
 			model := plugin.KaitoModelRegister.MustGet(presetName) // InferenceSpec has been validated so the name is valid.
 
 			machineCount := *r.Count
 			machineTotalNumGPUs := resource.NewQuantity(int64(machineCount*skuConfig.GPUCount), resource.DecimalSI)
-			machinePerGPUMemory := resource.NewQuantity(int64(skuConfig.GPUMem/skuConfig.GPUCount)*consts.GiBToBytes, resource.BinarySI) // Ensure it's per GPU
-			machineTotalGPUMem := resource.NewQuantity(int64(machineCount*skuConfig.GPUMem)*consts.GiBToBytes, resource.BinarySI)        // Total GPU memory
+			machinePerGPUMemory := resource.NewQuantity(int64(skuConfig.GPUMemGB/skuConfig.GPUCount)*consts.GiBToBytes, resource.BinarySI) // Ensure it's per GPU
+			machineTotalGPUMem := resource.NewQuantity(int64(machineCount*skuConfig.GPUMemGB)*consts.GiBToBytes, resource.BinarySI)        // Total GPU memory
 
 			modelGPUCount := resource.MustParse(model.GetInferenceParameters().GPUCountRequirement)
 			modelPerGPUMemory := resource.MustParse(model.GetInferenceParameters().PerGPUMemoryRequirement)
@@ -415,7 +416,7 @@ func (r *ResourceSpec) validateUpdate(old *ResourceSpec) (errs *apis.FieldError)
 	return errs
 }
 
-func (i *InferenceSpec) validateCreate(ctx context.Context, namespace string, instanceType string) (errs *apis.FieldError) {
+func (i *InferenceSpec) validateCreate(ctx context.Context, namespace string, instanceType string, runtime model.RuntimeName) (errs *apis.FieldError) {
 	// Check if both Preset and Template are not set
 	if i.Preset == nil && i.Template == nil {
 		errs = errs.Also(apis.ErrMissingField("Preset or Template must be specified"))
@@ -434,10 +435,18 @@ func (i *InferenceSpec) validateCreate(ctx context.Context, namespace string, in
 			// Need to return here. Otherwise, a panic will be hit when doing following checks.
 			return errs
 		}
+		modelPreset := plugin.KaitoModelRegister.MustGet(string(i.Preset.Name))
 		// Validate private preset has private image specified
-		if plugin.KaitoModelRegister.MustGet(string(i.Preset.Name)).GetInferenceParameters().ImageAccessMode == string(ModelImageAccessModePrivate) &&
+		if modelPreset.GetInferenceParameters().ImageAccessMode == string(ModelImageAccessModePrivate) &&
 			i.Preset.AccessMode != ModelImageAccessModePrivate {
 			errs = errs.Also(apis.ErrGeneric("This preset only supports private AccessMode, AccessMode must be private to continue"))
+		}
+		err := modelPreset.GetInferenceParameters().Validate(model.RuntimeContext{
+			RuntimeName: runtime,
+			UseAdapters: len(i.Adapters) > 0,
+		})
+		if err != nil {
+			errs = errs.Also(apis.ErrGeneric(fmt.Sprintf("Runtime validation: %v", err)))
 		}
 		// Additional validations for Preset
 		if i.Preset.AccessMode == ModelImageAccessModePrivate && i.Preset.Image == "" {

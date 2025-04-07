@@ -55,13 +55,10 @@ var (
 
 func getInstanceGPUCount(sku string) int {
 	skuHandler, _ := utils.GetSKUHandler()
-	gpuConfigs := skuHandler.GetGPUConfigs()
-
-	gpuConfig, exists := gpuConfigs[sku]
-	if !exists {
-		return 1
+	if gpuConfig := skuHandler.GetGPUConfigBySKU(sku); gpuConfig != nil {
+		return gpuConfig.GPUCount
 	}
-	return gpuConfig.GPUCount
+	return 1
 }
 
 func GetTuningImageInfo(ctx context.Context, workspaceObj *kaitov1beta1.Workspace, presetObj *model.PresetParam) (string, []corev1.LocalObjectReference) {
@@ -231,10 +228,17 @@ func CreatePresetTuning(ctx context.Context, workspaceObj *kaitov1beta1.Workspac
 		return nil, err
 	}
 
-	skuNumGPUs, err := utils.GetSKUNumGPUs(ctx, kubeClient, workspaceObj.Status.WorkerNodes,
-		workspaceObj.Resource.InstanceType, tuningObj.GPUCountRequirement)
+	var skuNumGPUs int
+	gpuConfig, err := utils.GetGPUConfigBySKU(workspaceObj.Resource.InstanceType)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get SKU num GPUs: %v", err)
+		gpuConfig, err = utils.TryGetGPUConfigFromNode(ctx, kubeClient, workspaceObj.Status.WorkerNodes)
+		if err != nil {
+			defaultNumGPU := resource.MustParse(tuningObj.GPUCountRequirement)
+			skuNumGPUs = int(defaultNumGPU.Value())
+		}
+	}
+	if gpuConfig != nil {
+		skuNumGPUs = gpuConfig.GPUCount
 	}
 
 	commands, resourceReq := prepareTuningParameters(ctx, workspaceObj, modelCommand, tuningObj, skuNumGPUs)
@@ -375,7 +379,7 @@ func prepareModelRunParameters(ctx context.Context, tuningObj *model.PresetParam
 // and sets the GPU resources required for tuning.
 // Returns the command and resource configuration.
 func prepareTuningParameters(ctx context.Context, wObj *kaitov1beta1.Workspace, modelCommand string,
-	tuningObj *model.PresetParam, skuNumGPUs string) ([]string, corev1.ResourceRequirements) {
+	tuningObj *model.PresetParam, skuNumGPUs int) ([]string, corev1.ResourceRequirements) {
 	hfParam := tuningObj.Transformers // Only support Huggingface for now
 	if hfParam.TorchRunParams == nil {
 		hfParam.TorchRunParams = make(map[string]string)
@@ -388,10 +392,10 @@ func prepareTuningParameters(ctx context.Context, wObj *kaitov1beta1.Workspace, 
 
 	resourceRequirements := corev1.ResourceRequirements{
 		Requests: corev1.ResourceList{
-			corev1.ResourceName(resources.CapacityNvidiaGPU): resource.MustParse(skuNumGPUs),
+			corev1.ResourceName(resources.CapacityNvidiaGPU): *resource.NewQuantity(int64(skuNumGPUs), resource.DecimalSI),
 		},
 		Limits: corev1.ResourceList{
-			corev1.ResourceName(resources.CapacityNvidiaGPU): resource.MustParse(skuNumGPUs),
+			corev1.ResourceName(resources.CapacityNvidiaGPU): *resource.NewQuantity(int64(skuNumGPUs), resource.DecimalSI),
 		},
 	}
 
