@@ -154,20 +154,26 @@ func CreatePresetInference(ctx context.Context, workspaceObj *v1beta1.Workspace,
 	}
 
 	// resource requirements
-	skuNumGPUs, err := utils.GetSKUNumGPUs(ctx, kubeClient, workspaceObj.Status.WorkerNodes,
-		workspaceObj.Resource.InstanceType, inferenceParam.GPUCountRequirement)
+	var skuNumGPUs int
+	gpuConfig, err := utils.GetGPUConfigBySKU(workspaceObj.Resource.InstanceType)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get SKU num GPUs: %v", err)
+		gpuConfig, err = utils.TryGetGPUConfigFromNode(ctx, kubeClient, workspaceObj.Status.WorkerNodes)
+		if err != nil {
+			defaultNumGPU := resource.MustParse(inferenceParam.GPUCountRequirement)
+			skuNumGPUs = int(defaultNumGPU.Value())
+		}
+	}
+	if gpuConfig != nil {
+		skuNumGPUs = gpuConfig.GPUCount
 	}
 	resourceReq := corev1.ResourceRequirements{
 		Requests: corev1.ResourceList{
-			corev1.ResourceName(resources.CapacityNvidiaGPU): resource.MustParse(skuNumGPUs),
+			corev1.ResourceName(resources.CapacityNvidiaGPU): *resource.NewQuantity(int64(skuNumGPUs), resource.DecimalSI),
 		},
 		Limits: corev1.ResourceList{
-			corev1.ResourceName(resources.CapacityNvidiaGPU): resource.MustParse(skuNumGPUs),
+			corev1.ResourceName(resources.CapacityNvidiaGPU): *resource.NewQuantity(int64(skuNumGPUs), resource.DecimalSI),
 		},
 	}
-	skuGPUCount, _ := strconv.Atoi(skuNumGPUs)
 
 	// additional volume
 	var volumes []corev1.Volume
@@ -179,7 +185,7 @@ func CreatePresetInference(ctx context.Context, workspaceObj *v1beta1.Workspace,
 	volumeMounts = append(volumeMounts, cmVolumeMount)
 
 	// add share memory for cross process communication
-	shmVolume, shmVolumeMount := utils.ConfigSHMVolume(skuGPUCount)
+	shmVolume, shmVolumeMount := utils.ConfigSHMVolume(skuNumGPUs)
 	if shmVolume.Name != "" {
 		volumes = append(volumes, shmVolume)
 	}
@@ -196,6 +202,7 @@ func CreatePresetInference(ctx context.Context, workspaceObj *v1beta1.Workspace,
 	runtimeName := v1beta1.GetWorkspaceRuntimeName(workspaceObj)
 	commands := inferenceParam.GetInferenceCommand(pkgmodel.RuntimeContext{
 		RuntimeName:  runtimeName,
+		GPUConfig:    gpuConfig,
 		ConfigVolume: &cmVolumeMount,
 		SKUNumGPUs:   skuNumGPUs,
 		UseAdapters:  len(workspaceObj.Inference.Adapters) > 0,

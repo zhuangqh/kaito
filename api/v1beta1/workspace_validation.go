@@ -59,8 +59,8 @@ func (w *Workspace) Validate(ctx context.Context) (errs *apis.FieldError) {
 					bypassResourceChecks = true
 				}
 			}
-			runtime := GetWorkspaceRuntimeName(w)
 
+			runtime := GetWorkspaceRuntimeName(w)
 			// TODO: Add Adapter Spec Validation - Including DataSource Validation for Adapter
 			errs = errs.Also(w.Resource.validateCreateWithInference(w.Inference, bypassResourceChecks).ViaField("resource"),
 				w.Inference.validateCreate(ctx, w.Namespace, w.Resource.InstanceType, runtime).ViaField("inference"))
@@ -310,17 +310,16 @@ func (r *ResourceSpec) validateCreateWithInference(inference *InferenceSpec, byp
 		errs = errs.Also(apis.ErrGeneric(fmt.Sprintf("Failed to get SKU handler: %v", err), "instanceType"))
 		return errs
 	}
-	gpuConfigs := skuHandler.GetGPUConfigs()
 
 	// Check if instancetype exists in our SKUs map for the particular cloud provider
-	if skuConfig, exists := gpuConfigs[instanceType]; exists {
+	if skuConfig := skuHandler.GetGPUConfigBySKU(instanceType); skuConfig != nil {
 		if presetName != "" {
 			model := plugin.KaitoModelRegister.MustGet(presetName) // InferenceSpec has been validated so the name is valid.
 
 			machineCount := *r.Count
 			machineTotalNumGPUs := resource.NewQuantity(int64(machineCount*skuConfig.GPUCount), resource.DecimalSI)
-			machinePerGPUMemory := resource.NewQuantity(int64(skuConfig.GPUMem/skuConfig.GPUCount)*consts.GiBToBytes, resource.BinarySI) // Ensure it's per GPU
-			machineTotalGPUMem := resource.NewQuantity(int64(machineCount*skuConfig.GPUMem)*consts.GiBToBytes, resource.BinarySI)        // Total GPU memory
+			machinePerGPUMemory := resource.NewQuantity(int64(skuConfig.GPUMemGB/skuConfig.GPUCount)*consts.GiBToBytes, resource.BinarySI) // Ensure it's per GPU
+			machineTotalGPUMem := resource.NewQuantity(int64(machineCount*skuConfig.GPUMemGB)*consts.GiBToBytes, resource.BinarySI)        // Total GPU memory
 
 			modelGPUCount := resource.MustParse(model.GetInferenceParameters().GPUCountRequirement)
 			modelPerGPUMemory := resource.MustParse(model.GetInferenceParameters().PerGPUMemoryRequirement)
@@ -447,7 +446,7 @@ func (i *InferenceSpec) validateCreate(ctx context.Context, namespace string, in
 			UseAdapters: len(i.Adapters) > 0,
 		})
 		if err != nil {
-			errs = errs.Also(apis.ErrGeneric(fmt.Sprintf("vLLM runtime validation: %v", err)))
+			errs = errs.Also(apis.ErrGeneric(fmt.Sprintf("Runtime validation: %v", err)))
 		}
 		// Additional validations for Preset
 		if i.Preset.AccessMode == ModelImageAccessModePrivate && i.Preset.Image == "" {

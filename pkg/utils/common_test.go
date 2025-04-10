@@ -51,7 +51,7 @@ func TestFetchGPUCountFromNodes(t *testing.T) {
 		name        string
 		nodeNames   []string
 		nodes       []runtime.Object
-		expectedGPU string
+		expectedGPU int
 		expectErr   bool
 		expectedErr string
 	}{
@@ -59,25 +59,25 @@ func TestFetchGPUCountFromNodes(t *testing.T) {
 			name:        "Single Node with GPU",
 			nodeNames:   []string{"node-1"},
 			nodes:       []runtime.Object{node1},
-			expectedGPU: "2",
+			expectedGPU: 2,
 		},
 		{
 			name:        "Multiple Nodes with GPU",
 			nodeNames:   []string{"node-1", "node-2"},
 			nodes:       []runtime.Object{node1, node2},
-			expectedGPU: "2",
+			expectedGPU: 2,
 		},
 		{
 			name:        "Node without GPU",
 			nodeNames:   []string{"node-3"},
 			nodes:       []runtime.Object{node3},
-			expectedGPU: "",
+			expectedGPU: 0,
 		},
 		{
 			name:        "No Worker Nodes",
 			nodeNames:   []string{},
 			nodes:       []runtime.Object{},
-			expectedGPU: "",
+			expectedGPU: 0,
 			expectErr:   true,
 			expectedErr: "no worker nodes found in the workspace",
 		},

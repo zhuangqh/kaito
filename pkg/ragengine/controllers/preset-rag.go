@@ -4,7 +4,6 @@ package controllers
 
 import (
 	"context"
-	"fmt"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -81,18 +80,24 @@ func CreatePresetRAG(ctx context.Context, ragEngineObj *v1alpha1.RAGEngine, revi
 	var resourceReq corev1.ResourceRequirements
 
 	if ragEngineObj.Spec.Embedding.Local != nil {
-		skuNumGPUs, err := utils.GetSKUNumGPUs(ctx, kubeClient, ragEngineObj.Status.WorkerNodes,
-			ragEngineObj.Spec.Compute.InstanceType, "1")
+		var skuNumGPUs int
+		gpuConfig, err := utils.GetGPUConfigBySKU(ragEngineObj.Spec.Compute.InstanceType)
 		if err != nil {
-			return nil, fmt.Errorf("failed to get SKU num GPUs: %v", err)
+			gpuConfig, err = utils.TryGetGPUConfigFromNode(ctx, kubeClient, ragEngineObj.Status.WorkerNodes)
+			if err != nil {
+				skuNumGPUs = 1
+			}
+		}
+		if gpuConfig != nil {
+			skuNumGPUs = gpuConfig.GPUCount
 		}
 
 		resourceReq = corev1.ResourceRequirements{
 			Requests: corev1.ResourceList{
-				corev1.ResourceName(resources.CapacityNvidiaGPU): resource.MustParse(skuNumGPUs),
+				corev1.ResourceName(resources.CapacityNvidiaGPU): *resource.NewQuantity(int64(skuNumGPUs), resource.DecimalSI),
 			},
 			Limits: corev1.ResourceList{
-				corev1.ResourceName(resources.CapacityNvidiaGPU): resource.MustParse(skuNumGPUs),
+				corev1.ResourceName(resources.CapacityNvidiaGPU): *resource.NewQuantity(int64(skuNumGPUs), resource.DecimalSI),
 			},
 		}
 

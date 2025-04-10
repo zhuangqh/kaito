@@ -770,7 +770,7 @@ func TestInferenceSpecValidateCreate(t *testing.T) {
 					}
 				}()
 			}
-			errs := tc.inferenceSpec.validateCreate(ctx, DefaultReleaseNamespace, "Standard_NC24ads_A100_v4")
+			errs := tc.inferenceSpec.validateCreate(ctx, DefaultReleaseNamespace, "Standard_NC24ads_A100_v4", model.RuntimeNameHuggingfaceTransformers)
 			hasErrs := errs != nil
 			if hasErrs != tc.expectErrs {
 				t.Errorf("validateCreate() errors = %v, expectErrs %v", errs, tc.expectErrs)
@@ -1871,7 +1871,7 @@ other_field: value
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			// Validate the inference spec
-			errs := tc.inferenceSpec.validateCreate(ctx, DefaultReleaseNamespace, tc.resourceSpec.InstanceType)
+			errs := tc.inferenceSpec.validateCreate(ctx, DefaultReleaseNamespace, tc.resourceSpec.InstanceType, model.RuntimeNameHuggingfaceTransformers)
 			hasErrs := errs != nil
 
 			if hasErrs != tc.expectErrs {

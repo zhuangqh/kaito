@@ -57,10 +57,9 @@ func (i *InferenceSpec) validateConfigMap(ctx context.Context, namespace, cmName
 		return apis.ErrGeneric(fmt.Sprintf("Failed to get SKU handler: %v", err), "instanceType")
 	}
 
-	gpuConfigs := skuHandler.GetGPUConfigs()
-	if skuConfig, exists := gpuConfigs[instanceType]; exists {
+	if skuConfig := skuHandler.GetGPUConfigBySKU(instanceType); skuConfig != nil {
 		// Check if this is a multi-GPU instance with less than 20GB per GPU
-		gpuMemPerGPU := skuConfig.GPUMem / skuConfig.GPUCount
+		gpuMemPerGPU := skuConfig.GPUMemGB / skuConfig.GPUCount
 		if skuConfig.GPUCount > 1 && gpuMemPerGPU < 20 {
 			// For multi-GPU instances with less than 20GB per GPU, max-model-len is required
 			maxModelLen, exists := inferenceConfig.VLLM["max-model-len"]

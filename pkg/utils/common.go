@@ -152,33 +152,32 @@ func GetSKUHandler() (sku.CloudSKUHandler, error) {
 	return skuHandler, nil
 }
 
-func GetSKUNumGPUs(ctx context.Context, kubeClient client.Client, workerNodes []string, instanceType, defaultGPUCount string) (string, error) {
+func GetGPUConfigBySKU(instanceType string) (*sku.GPUConfig, error) {
 	skuHandler, err := GetSKUHandler()
 	if err != nil {
-		return "", apis.ErrInvalidValue(fmt.Sprintf("Failed to get SKU handler: %v", err), "sku")
+		return nil, apis.ErrInvalidValue(fmt.Sprintf("Failed to get SKU handler: %v", err), "sku")
 	}
 
-	skuNumGPUs := defaultGPUCount // Default to using the provided default GPU count
+	return skuHandler.GetGPUConfigBySKU(instanceType), nil
+}
 
-	skuConfig, skuExists := skuHandler.GetGPUConfigs()[instanceType]
-	if skuExists {
-		skuNumGPUs = fmt.Sprintf("%d", skuConfig.GPUCount)
-	} else {
-		skuGPUCount, err := FetchGPUCountFromNodes(ctx, kubeClient, workerNodes)
-		if err != nil {
-			fmt.Printf("Failed to fetch GPU count from nodes: %v", err)
-		} else if skuGPUCount != "" {
-			skuNumGPUs = skuGPUCount
-		}
+func TryGetGPUConfigFromNode(ctx context.Context, kubeClient client.Client, workerNodes []string) (*sku.GPUConfig, error) {
+	skuGPUCount, err := FetchGPUCountFromNodes(ctx, kubeClient, workerNodes)
+	if err != nil || skuGPUCount == 0 {
+		return nil, fmt.Errorf("failed to fetch GPU count from nodes: %w", err)
 	}
 
-	return skuNumGPUs, nil
+	return &sku.GPUConfig{
+		SKU:      "unknown", // SKU is not available from nodes
+		GPUCount: skuGPUCount,
+		GPUModel: "unknown", // GPU model is not available from nodes
+	}, nil
 }
 
 // FetchGPUCountFromNodes retrieves the GPU count from the given node names.
-func FetchGPUCountFromNodes(ctx context.Context, kubeClient client.Client, nodeNames []string) (string, error) {
+func FetchGPUCountFromNodes(ctx context.Context, kubeClient client.Client, nodeNames []string) (int, error) {
 	if len(nodeNames) == 0 {
-		return "", fmt.Errorf("no worker nodes found in the workspace")
+		return 0, fmt.Errorf("no worker nodes found in the workspace")
 	}
 
 	var allNodes v1.NodeList
@@ -198,14 +197,14 @@ func FetchGPUCountFromNodes(ctx context.Context, kubeClient client.Client, nodeN
 	return GetPerNodeGPUCountFromNodes(&allNodes), nil
 }
 
-func GetPerNodeGPUCountFromNodes(nodeList *v1.NodeList) string {
+func GetPerNodeGPUCountFromNodes(nodeList *v1.NodeList) int {
 	for _, node := range nodeList.Items {
 		gpuCount, exists := node.Status.Capacity[consts.NvidiaGPU]
 		if exists && gpuCount.String() != "" {
-			return gpuCount.String()
+			return int(gpuCount.Value())
 		}
 	}
-	return ""
+	return 0
 }
 
 func ExtractAndValidateRepoName(image string) error {
