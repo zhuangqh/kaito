@@ -380,7 +380,7 @@ func GeneratePullerContainers(wObj *kaitov1beta1.Workspace, volumeMounts []corev
 	size := len(wObj.Inference.Adapters)
 
 	initContainers := make([]corev1.Container, 0, size)
-	envVars := make([]corev1.EnvVar, 0, size)
+	var envVars []corev1.EnvVar
 	volumes := make([]corev1.Volume, 0, size)
 
 	for _, adapter := range wObj.Inference.Adapters {
@@ -390,11 +390,13 @@ func GeneratePullerContainers(wObj *kaitov1beta1.Workspace, volumeMounts []corev
 		volume, volumeMount := utils.ConfigImagePullSecretVolume(sourceName+"-inference-adapter", source.ImagePullSecrets)
 		volumes = append(volumes, volume)
 
-		envVar := corev1.EnvVar{
-			Name:  sourceName,
-			Value: *adapter.Strength,
+		if adapter.Strength != nil {
+			envVar := corev1.EnvVar{
+				Name:  sourceName,
+				Value: *adapter.Strength,
+			}
+			envVars = append(envVars, envVar)
 		}
-		envVars = append(envVars, envVar)
 
 		outputDirectory := path.Join("/mnt/adapter", sourceName)
 		pullerContainer := image.NewPullerContainer(source.Image, outputDirectory)

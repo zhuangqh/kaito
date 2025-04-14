@@ -205,7 +205,9 @@ func CreatePresetInference(ctx context.Context, workspaceObj *v1beta1.Workspace,
 		GPUConfig:    gpuConfig,
 		ConfigVolume: &cmVolumeMount,
 		SKUNumGPUs:   skuNumGPUs,
-		UseAdapters:  len(workspaceObj.Inference.Adapters) > 0,
+		RuntimeCapabilityRequest: pkgmodel.RuntimeCapabilityRequest{
+			InferenceAdapter: len(workspaceObj.Inference.Adapters) > 0,
+		},
 	})
 
 	image, imagePullSecrets := GetInferenceImageInfo(ctx, workspaceObj, inferenceParam)
