@@ -143,12 +143,12 @@ type RuntimeContext struct {
 	GPUConfig    *sku.GPUConfig
 	ConfigVolume *corev1.VolumeMount
 	SKUNumGPUs   int
-	RuntimeCapabilityRequest
+	RuntimeContextExtraArguments
 }
 
-type RuntimeCapabilityRequest struct {
-	InferenceAdapter bool
-	AdapterStrength  bool
+type RuntimeContextExtraArguments struct {
+	AdaptersEnabled        bool
+	AdapterStrengthEnabled bool
 }
 
 func (p *PresetParam) GetInferenceCommand(rc RuntimeContext) []string {
@@ -182,7 +182,7 @@ func (p *PresetParam) buildVLLMInferenceCommand(rc RuntimeContext) []string {
 	if !p.DisableTensorParallelism {
 		p.VLLM.ModelRunParams["tensor-parallel-size"] = strconv.Itoa(rc.SKUNumGPUs)
 	}
-	if !p.VLLM.DisallowLoRA && rc.InferenceAdapter {
+	if !p.VLLM.DisallowLoRA && rc.AdaptersEnabled {
 		p.VLLM.ModelRunParams["enable-lora"] = ""
 	}
 	gpuMemUtil := getGPUMemoryUtilForVLLM(rc.GPUConfig)
@@ -198,10 +198,10 @@ func (p *PresetParam) Validate(rc RuntimeContext) error {
 	var errs []string
 	switch rc.RuntimeName {
 	case RuntimeNameVLLM:
-		if rc.InferenceAdapter && p.VLLM.DisallowLoRA {
+		if rc.AdaptersEnabled && p.VLLM.DisallowLoRA {
 			errs = append(errs, fmt.Sprintf("vLLM does not support LoRA adapters for this model: %s", p.VLLM.ModelName))
 		}
-		if rc.AdapterStrength {
+		if rc.AdapterStrengthEnabled {
 			errs = append(errs, "vLLM does not support adapter strength")
 		}
 	}

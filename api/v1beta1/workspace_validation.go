@@ -450,9 +450,9 @@ func (i *InferenceSpec) validateCreate(ctx context.Context, namespace string, in
 		}
 		err := modelPreset.GetInferenceParameters().Validate(model.RuntimeContext{
 			RuntimeName: runtime,
-			RuntimeCapabilityRequest: model.RuntimeCapabilityRequest{
-				InferenceAdapter: len(i.Adapters) > 0,
-				AdapterStrength:  useAdapterStrength,
+			RuntimeContextExtraArguments: model.RuntimeContextExtraArguments{
+				AdaptersEnabled:        len(i.Adapters) > 0,
+				AdapterStrengthEnabled: useAdapterStrength,
 			},
 		})
 		if err != nil {
@@ -475,6 +475,7 @@ func (i *InferenceSpec) validateCreate(ctx context.Context, namespace string, in
 	}
 
 	// check if required fields are set
+	// this check only applies to vllm runtime
 	if runtime == model.RuntimeNameVLLM {
 		func() {
 			var (

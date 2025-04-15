@@ -205,8 +205,8 @@ func CreatePresetInference(ctx context.Context, workspaceObj *v1beta1.Workspace,
 		GPUConfig:    gpuConfig,
 		ConfigVolume: &cmVolumeMount,
 		SKUNumGPUs:   skuNumGPUs,
-		RuntimeCapabilityRequest: pkgmodel.RuntimeCapabilityRequest{
-			InferenceAdapter: len(workspaceObj.Inference.Adapters) > 0,
+		RuntimeContextExtraArguments: pkgmodel.RuntimeContextExtraArguments{
+			AdaptersEnabled: len(workspaceObj.Inference.Adapters) > 0,
 		},
 	})
 
