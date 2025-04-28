@@ -58,9 +58,9 @@ class BaseVectorStore(ABC):
     async def _append_documents_to_index(self, index_name: str, documents: List[Document]) -> List[str]:
         """Common logic for appending documents to existing index."""
         logger.info(f"Index {index_name} already exists. Appending documents to existing index.")
-        indexed_doc_ids = set()
+        indexed_docs = [None] * len(documents)
 
-        async def handle_document(doc: Document):
+        async def handle_document(doc_index: int, doc: Document):
             doc_id = self.generate_doc_id(doc.text)
             if self.use_rwlock:
                 async with self.rwlock.reader_lock:
@@ -69,13 +69,13 @@ class BaseVectorStore(ABC):
                 retrieved_doc = await self.index_map[index_name].docstore.aget_ref_doc_info(doc_id)
             if not retrieved_doc:
                 await self.add_document_to_index(index_name, doc, doc_id)
-                indexed_doc_ids.add(doc_id)
             else:
                 logger.info(f"Document {doc_id} already exists in index {index_name}. Skipping.")
+            indexed_docs[doc_index] = doc_id
 
         # Gather all coroutines for processing documents
-        await asyncio.gather(*(handle_document(doc) for doc in documents))
-        return list(indexed_doc_ids)
+        await asyncio.gather(*(handle_document(idx, doc) for idx, doc in enumerate(documents)))
+        return indexed_docs
     
     @abstractmethod
     async def _create_new_index(self, index_name: str, documents: List[Document]) -> List[str]:
