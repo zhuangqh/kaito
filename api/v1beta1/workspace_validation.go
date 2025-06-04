@@ -217,6 +217,10 @@ func (r *DataSource) validateCreate() (errs *apis.FieldError) {
 		sourcesSpecified++
 	}
 
+	if volume := r.Volume; volume != nil {
+		sourcesSpecified++
+	}
+
 	// Ensure exactly one of URLs, Volume, or Image is specified
 	if sourcesSpecified != 1 {
 		errs = errs.Also(apis.ErrGeneric("Exactly one of URLs, Volume, or Image must be specified", "URLs", "Volume", "Image"))
@@ -253,9 +257,13 @@ func (r *DataDestination) validateCreate() (errs *apis.FieldError) {
 		destinationsSpecified++
 	}
 
-	// If no destination is specified, return an error
-	if destinationsSpecified == 0 {
-		errs = errs.Also(apis.ErrMissingField("At least one of Volume or Image must be specified"))
+	if volume := r.Volume; volume != nil {
+		destinationsSpecified++
+	}
+
+	// Ensure exactly one of Volume or Image is specified
+	if destinationsSpecified != 1 {
+		errs = errs.Also(apis.ErrMissingField("Exactly one of Volume or Image must be specified")) // TODO: Consider allowing both Volume and Image to be specified
 	}
 	return errs
 }
