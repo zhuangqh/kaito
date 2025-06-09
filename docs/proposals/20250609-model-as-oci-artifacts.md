@@ -24,9 +24,7 @@ status: provisional
 - [Proposal](#proposal)
   - [Build Image Using ORAS Push](#build-image-using-oras-push)
   - [Use Zstd Instead of Gzip for Compression](#use-zstd-instead-of-gzip-for-compression)
-  - [Image Pulling Optimization](#image-pulling-optimization)
-    - [Option A: Split Files into Multiple Layers](#option-a-split-files-into-multiple-layers)
-    - [Option B: Shipping Model Files as OCI Artifacts](#option-b-shipping-model-files-as-oci-artifacts)
+  - [Shipping Model Files as OCI Artifacts](#shipping-model-files-as-oci-artifacts)
 - [Design Details](#design-details)
   - [OCI Artifacts vs OCI Image](#oci-artifacts-vs-oci-image)
   - [OCI Registries Compatibility](#oci-registries-compatibility)
@@ -40,6 +38,7 @@ status: provisional
   - [Troubleshooting](#troubleshooting)
 - [Implementation History](#implementation-history)
 - [Alternatives](#alternatives)
+  - [Split Files into Multiple Layers](#split-files-into-multiple-layers)
   - [Live Download from Hugging Face](#live-download-from-hugging-face)
 - [Test Plan](#test-plan)
   - [Experimental Setup and Results](#experimental-setup-and-results)
@@ -108,13 +107,7 @@ Zstd provides better decompression performance than gzip, which is particularly 
 
 Reference: https://depot.dev/blog/building-images-gzip-vs-zstd
 
-### Image Pulling Optimization
-
-#### Option A: Split Files into Multiple Layers
-
-Add model files to base image using ORAS, keeping each safetensor file as an individual layer to improve download concurrency.
-
-#### Option B: Shipping Model Files as OCI Artifacts
+### Shipping Model Files as OCI Artifacts
 
 Split the containerized image into two parts:
 1. A base image containing the runtime and dependencies
@@ -266,6 +259,12 @@ sequenceDiagram
 
 ## Alternatives
 
+### Split Files into Multiple Layers
+
+Add model files to base image using ORAS, keeping each safetensor file as an individual layer to improve download concurrency.
+
+This approach maintains compatibility with standard container runtimes but still has the disadvantage of requiring full image rebuilds when the base image changes. Additionally, our testing shows that the overall image pulling latency is still not good enough for very large models. This is primarily because container layer unpacking remains a [serial process](https://github.com/containerd/containerd/issues/8881), creating a bottleneck regardless of download parallelism.
+
 ### Live Download from Hugging Face
 
 Based on our testing, the download bandwidth from ACR is comparable to that of the Hugging Face repository. 
@@ -288,7 +287,6 @@ While Hugging Face provides comparable bandwidth, ACR is more reliable and bette
 | multilayer-tar-zstd | aimodelsregistrytest.azurecr.io/phi-4-mini-instruct:phi4zstd | Split model files into individual layers. Each layer compressed using zstd. |
 | baseImage+OCI-artifacts | aimodelsregistrytest.azurecr.io/base:0.0.3 and aimodelsregistrytest.azurecr.io/phi-4-mini-instruct:model | Pull base image first. Then download model files using oras pull. |
 
-<p align="center">
-    <img src="../img/model-as-oci-artifacts-evaluation.png" width="50%" />
-</p>
-
+<div align="center">
+  <img src="../img/model-as-oci-artifacts-evaluation.png" width=50% title="Model as OCI Artifacts Evaluation" alt="Model as OCI Artifacts Evaluation">
+</div>
