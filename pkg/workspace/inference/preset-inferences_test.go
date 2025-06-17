@@ -308,7 +308,7 @@ func TestGeneratePresetInference(t *testing.T) {
 			if tc.expectedModelImage != "" {
 				var pullerContainer corev1.Container
 				for _, container := range initContainer {
-					if container.Name == "weights-downloader" {
+					if container.Name == "model-weights-downloader" {
 						pullerContainer = container
 						break
 					}
