@@ -197,11 +197,11 @@ func GenerateTuningJobManifest(wObj *kaitov1beta1.Workspace, revisionNum string,
 	// TODO: make containers only mount the volumes they need
 
 	for i := range initContainers {
-		initContainers[i].VolumeMounts = append(initContainers[i].VolumeMounts, volumeMounts...)
+		initContainers[i].VolumeMounts = utils.DedupVolumeMounts(append(initContainers[i].VolumeMounts, volumeMounts...))
 	}
 
 	for i := range sidecarContainers {
-		sidecarContainers[i].VolumeMounts = append(sidecarContainers[i].VolumeMounts, volumeMounts...)
+		sidecarContainers[i].VolumeMounts = utils.DedupVolumeMounts(append(sidecarContainers[i].VolumeMounts, volumeMounts...))
 	}
 
 	// Construct the complete list of containers (main and sidecars)
@@ -452,7 +452,7 @@ func GenerateModelPullerContainer(ctx context.Context, workspaceObj *v1beta1.Wor
 	}
 
 	puller := corev1.Container{
-		Name:  "weights-downloader",
+		Name:  "model-weights-downloader",
 		Image: "ghcr.io/oras-project/oras:v1.2.2",
 		Command: []string{
 			"oras",
@@ -463,7 +463,7 @@ func GenerateModelPullerContainer(ctx context.Context, workspaceObj *v1beta1.Wor
 		},
 		VolumeMounts: []corev1.VolumeMount{
 			{
-				Name:      "weights-volume",
+				Name:      "model-weights-volume",
 				MountPath: utils.DefaultWeightsVolumePath,
 			},
 		},

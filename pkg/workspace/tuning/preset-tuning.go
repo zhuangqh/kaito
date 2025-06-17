@@ -194,7 +194,7 @@ func CreatePresetTuning(ctx context.Context, workspaceObj *kaitov1beta1.Workspac
 	}
 
 	// Add volume for model weights access
-	modelWeightsVolume, modelWeightsVolumeMount := utils.ConfigWeightsVolume()
+	modelWeightsVolume, modelWeightsVolumeMount := utils.ConfigModelWeightsVolume()
 	volumes = append(volumes, modelWeightsVolume)
 	volumeMounts = append(volumeMounts, modelWeightsVolumeMount)
 	initContainers = append(initContainers, manifests.GenerateModelPullerContainer(ctx, workspaceObj, tuningObj)...)

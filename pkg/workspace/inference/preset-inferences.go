@@ -166,7 +166,7 @@ func GeneratePresetInference(ctx context.Context, workspaceObj *v1beta1.Workspac
 
 	// add model weights volume mount if the model is not downloaded at runtime
 	if !inferenceParam.DownloadAtRuntime {
-		modelWeightsVolume, modelWeightsVolumeMount := utils.ConfigWeightsVolume()
+		modelWeightsVolume, modelWeightsVolumeMount := utils.ConfigModelWeightsVolume()
 		volumes = append(volumes, modelWeightsVolume)
 		volumeMounts = append(volumeMounts, modelWeightsVolumeMount)
 	}

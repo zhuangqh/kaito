@@ -185,7 +185,7 @@ func ConfigAdapterVolume() (corev1.Volume, corev1.VolumeMount) {
 	return volume, volumeMount
 }
 
-func ConfigWeightsVolume() (corev1.Volume, corev1.VolumeMount) {
+func ConfigModelWeightsVolume() (corev1.Volume, corev1.VolumeMount) {
 	var volume corev1.Volume
 	var volumeMount corev1.VolumeMount
 
@@ -194,12 +194,12 @@ func ConfigWeightsVolume() (corev1.Volume, corev1.VolumeMount) {
 	}
 
 	volume = corev1.Volume{
-		Name:         "weights-volume",
+		Name:         "model-weights-volume",
 		VolumeSource: volumeSource,
 	}
 
 	volumeMount = corev1.VolumeMount{
-		Name:      "weights-volume",
+		Name:      "model-weights-volume",
 		MountPath: DefaultWeightsVolumePath,
 	}
 	return volume, volumeMount
