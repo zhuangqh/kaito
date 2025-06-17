@@ -93,15 +93,20 @@ func validateInitContainers(workspaceObj *kaitov1beta1.Workspace, expectedInitCo
 			}
 
 			for _, initContainer := range expectedInitContainers {
+				found := false
 				for _, gotContainer := range initContainers {
 					if initContainer.Name == gotContainer.Name && initContainer.Image == gotContainer.Image {
 						// Found a matching init container
-						return true
+						found = true
+						break
 					}
+				}
+				if !found {
+					return false
 				}
 			}
 
-			return false
+			return true
 		}, 20*time.Minute, utils.PollInterval).Should(BeTrue(), "Failed to wait for initContainers to be ready")
 	})
 }
