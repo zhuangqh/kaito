@@ -453,7 +453,7 @@ func GenerateModelPullerContainer(ctx context.Context, workspaceObj *v1beta1.Wor
 
 	puller := corev1.Container{
 		Name:  "model-weights-downloader",
-		Image: "ghcr.io/oras-project/oras:v1.2.2",
+		Image: utils.DefaultORASToolImage,
 		Command: []string{
 			"oras",
 			"pull",
