@@ -8,11 +8,9 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/component-helpers/storage/volume"
@@ -31,8 +29,6 @@ import (
 
 type PersistentVolumeGCReconciler struct {
 	client.Client
-	Log      logr.Logger
-	Scheme   *runtime.Scheme
 	Recorder record.EventRecorder
 }
 
@@ -70,7 +66,7 @@ func (c *PersistentVolumeGCReconciler) Reconcile(ctx context.Context, req reconc
 		return reconcile.Result{}, err
 	}
 
-	result, err := c.deleteOrphanedLocalPV(ctx, pvObj, pvcObj)
+	result, err := c.deleteOrphanedLocalPVIfNodeNotFound(ctx, pvObj, pvcObj)
 	if err != nil {
 		klog.ErrorS(err, "Failed to delete orphaned local PV", "pv", klog.KObj(pvObj), "pvc", klog.KObj(pvcObj))
 		c.Recorder.Eventf(pvcObj, corev1.EventTypeWarning, "DeletionFailed", "Failed to delete orphaned local PV %s: %v", klog.KObj(pvObj), err)
@@ -83,7 +79,7 @@ func (c *PersistentVolumeGCReconciler) Reconcile(ctx context.Context, req reconc
 // When a node with local volumes gets removed from a cluster before deleting those volumes,
 // the PV and PVC objects may still exist. Force deleting objects in this case.
 // Ref: https://github.com/kubernetes-csi/external-provisioner?tab=readme-ov-file#deleting-local-volumes-after-a-node-failure-or-removal
-func (c *PersistentVolumeGCReconciler) deleteOrphanedLocalPV(ctx context.Context, pv *corev1.PersistentVolume, pvc *corev1.PersistentVolumeClaim) (ctrl.Result, error) {
+func (c *PersistentVolumeGCReconciler) deleteOrphanedLocalPVIfNodeNotFound(ctx context.Context, pv *corev1.PersistentVolume, pvc *corev1.PersistentVolumeClaim) (ctrl.Result, error) {
 	if pvc.DeletionTimestamp.IsZero() {
 		return ctrl.Result{}, nil
 	}

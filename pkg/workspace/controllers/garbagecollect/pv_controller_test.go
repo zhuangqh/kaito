@@ -8,7 +8,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/go-logr/logr"
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -200,8 +199,6 @@ func TestReconcile(t *testing.T) {
 			// Create reconciler
 			reconciler := &PersistentVolumeGCReconciler{
 				Client:   client,
-				Scheme:   s,
-				Log:      logr.Discard(),
 				Recorder: recorder,
 			}
 
