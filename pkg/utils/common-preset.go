@@ -15,6 +15,8 @@ const (
 	DefaultDataVolumePath     = "/mnt/data"
 	DefaultAdapterVolumePath  = "/mnt/adapter"
 	DefaultWeightsVolumePath  = "/workspace/weights"
+
+	DefaultORASToolImage = "mcr.microsoft.com/oss/v2/oras-project/oras:v1.2.3"
 )
 
 func ConfigResultsVolume(outputPath string, outputVolume *corev1.VolumeSource) (corev1.Volume, corev1.VolumeMount) {
