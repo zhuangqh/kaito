@@ -207,7 +207,7 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: spec.nodeName
-        image: "localcsidriver.azurecr.io/acstor/local-csi-driver:0.0.1-latest"
+        image: "mcr.microsoft.com/acstor/local-csi-driver:v0.1.0"
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:

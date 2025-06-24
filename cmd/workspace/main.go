@@ -132,8 +132,6 @@ func main() {
 
 	pvGCReconciler := garbagecollect.NewPersistentVolumeGCReconciler(
 		kClient,
-		mgr.GetScheme(),
-		log.Log.WithName("controllers").WithName("PersistentVolumeGC"),
 		mgr.GetEventRecorderFor("KAITO-PersistentVolumeGC-controller"),
 	)
 	if err = pvGCReconciler.SetupWithManager(mgr); err != nil {

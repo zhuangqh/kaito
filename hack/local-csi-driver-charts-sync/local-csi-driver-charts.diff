@@ -1,7 +1,7 @@
-diff --git a/./local-csi-driver-charts.yaml b/./local-csi-driver-ds.yaml
-index bf26c6b..eb86487 100644
---- a/./local-csi-driver-charts.yaml
-+++ b/./local-csi-driver-ds.yaml
+diff --git a/local-csi-driver/local-csi-driver-charts.yaml b/./charts/kaito/workspace/templates/local-csi-driver-ds.yaml
+index bf26c6b..00ebf33 100644
+--- a/local-csi-driver/local-csi-driver-charts.yaml
++++ b/./charts/kaito/workspace/templates/local-csi-driver-ds.yaml
 @@ -4,53 +4,9 @@ apiVersion: v1
  kind: ServiceAccount
  metadata:
@@ -160,3 +160,12 @@ index bf26c6b..eb86487 100644
        annotations:
          kubectl.kubernetes.io/default-container: driver
      spec:
+@@ -287,7 +200,7 @@ spec:
+           valueFrom:
+             fieldRef:
+               fieldPath: spec.nodeName
+-        image: "localcsidriver.azurecr.io/acstor/local-csi-driver:0.0.1-latest"
++        image: "mcr.microsoft.com/acstor/local-csi-driver:v0.1.0"
+         imagePullPolicy: IfNotPresent
+         livenessProbe:
+           httpGet:

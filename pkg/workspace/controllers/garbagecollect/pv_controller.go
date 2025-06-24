@@ -5,15 +5,19 @@ package garbagecollect
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/equality"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/component-helpers/storage/volume"
 	"k8s.io/klog/v2"
+	"k8s.io/utils/ptr"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -32,11 +36,9 @@ type PersistentVolumeGCReconciler struct {
 	Recorder record.EventRecorder
 }
 
-func NewPersistentVolumeGCReconciler(client client.Client, scheme *runtime.Scheme, log logr.Logger, Recorder record.EventRecorder) *PersistentVolumeGCReconciler {
+func NewPersistentVolumeGCReconciler(client client.Client, Recorder record.EventRecorder) *PersistentVolumeGCReconciler {
 	return &PersistentVolumeGCReconciler{
 		Client:   client,
-		Scheme:   scheme,
-		Log:      log,
 		Recorder: Recorder,
 	}
 }
@@ -109,20 +111,25 @@ func (c *PersistentVolumeGCReconciler) deleteOrphanedLocalPV(ctx context.Context
 }
 
 func forceDeletePV(ctx context.Context, c client.Client, pv *corev1.PersistentVolume) error {
-	// Remove finalizers to allow deletion
-	pv.Finalizers = nil
-	if err := c.Update(ctx, pv); err != nil {
-		klog.ErrorS(err, "Failed to update PV finalizers", "pv", klog.KObj(pv))
-		return err
-	}
-	klog.InfoS("Removed finalizers from PV", "pv", klog.KObj(pv))
-
-	// Delete the PV
-	if err := c.Delete(ctx, pv); err != nil {
-		klog.ErrorS(err, "Failed to delete PV", "pv", klog.KObj(pv))
-		return client.IgnoreNotFound(err)
+	// Delete the PV: kubectl delete pv <pv> --wait=false --grace-period=0 --force
+	err := c.Delete(ctx, pv, &client.DeleteOptions{
+		GracePeriodSeconds: ptr.To(int64(0)),
+		PropagationPolicy:  ptr.To(metav1.DeletePropagationBackground),
+	})
+	if err != nil {
+		return client.IgnoreNotFound(fmt.Errorf("failed to delete PV %s: %w", pv.Name, err))
 	}
 	klog.InfoS("Successfully deleted PV", "pv", klog.KObj(pv))
+
+	// Remove finalizers: kubectl patch pv <pv> -p '{"metadata":{"finalizers":null}}'
+	stored := pv.DeepCopy()
+	pv.Finalizers = nil
+	if !equality.Semantic.DeepEqual(stored, pv) {
+		if err := c.Patch(ctx, pv, client.StrategicMergeFrom(stored)); err != nil {
+			return client.IgnoreNotFound(fmt.Errorf("failed to patch PV %s to remove finalizers: %w", pv.Name, err))
+		}
+	}
+	klog.InfoS("Removed finalizers from PV", "pv", klog.KObj(pv))
 
 	return nil
 }

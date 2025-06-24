@@ -9,13 +9,16 @@ import (
 
 	"github.com/samber/lo"
 	corev1 "k8s.io/api/core/v1"
+	storagev1 "k8s.io/api/storage/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"k8s.io/klog/v2"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/kaito-project/kaito/api/v1beta1"
 	pkgmodel "github.com/kaito-project/kaito/pkg/model"
+	"github.com/kaito-project/kaito/pkg/sku"
 	"github.com/kaito-project/kaito/pkg/utils"
 	"github.com/kaito-project/kaito/pkg/utils/consts"
 	"github.com/kaito-project/kaito/pkg/utils/resources"
@@ -237,7 +240,7 @@ func GeneratePresetInference(ctx context.Context, workspaceObj *v1beta1.Workspac
 	// to ensure pods are created with individual identities (their ordinal indexes) -
 	// https://kubernetes.io/docs/concepts/workloads/controllers/statefulset/#pod-identity
 	if model.SupportDistributedInference() && runtimeName == pkgmodel.RuntimeNameVLLM && numNodes > 1 {
-		if gpuConfig != nil && gpuConfig.NVMeDiskEnabled {
+		if checkIfNVMeAvailable(ctx, gpuConfig, kubeClient) {
 			pvcs = append(pvcs, GenerateModelWeightsCacheVolume(ctx, workspaceObj, model))
 		} else {
 			volumes = append(volumes, utils.DefaultModelWeightsVolume)
@@ -263,6 +266,23 @@ const (
 	probeTypeLiveness  probeType = "liveness"
 	probeTypeReadiness probeType = "readiness"
 )
+
+func checkIfNVMeAvailable(ctx context.Context, gpuConfig *sku.GPUConfig, kubeClient client.Client) bool {
+	if gpuConfig == nil || !gpuConfig.NVMeDiskEnabled {
+		return false
+	}
+
+	// Check if the required NVMe storage class exists
+	storageClass := &storagev1.StorageClass{}
+	err := kubeClient.Get(ctx, client.ObjectKey{Name: consts.LocalNVMeStorageClass}, storageClass)
+	if err != nil {
+		if client.IgnoreNotFound(err) == nil {
+			return false
+		}
+		klog.ErrorS(err, "Failed to check for NVMe storage class. Assuming it's available.")
+	}
+	return true
+}
 
 // getDistributedInferenceProbe returns a container probe configuration for the distributed inference workload.
 func getDistributedInferenceProbe(probeType probeType, wObj *v1beta1.Workspace, initialDelaySeconds, periodSeconds, timeoutSeconds int32) *corev1.Probe {

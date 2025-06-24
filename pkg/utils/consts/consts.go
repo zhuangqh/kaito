@@ -42,5 +42,5 @@ const (
 )
 
 var (
-	LocalNVMeStorageClass = "local-nvme-disk"
+	LocalNVMeStorageClass = "kaito-local-nvme-disk"
 )

@@ -15,7 +15,6 @@ require (
 	github.com/prometheus/client_golang v1.20.5
 	github.com/samber/lo v1.49.1
 	github.com/stretchr/testify v1.10.0
-	go.uber.org/multierr v1.11.0
 	gopkg.in/yaml.v2 v2.4.0
 	gotest.tools v2.2.0+incompatible
 	k8s.io/api v0.30.3
@@ -90,6 +89,7 @@ require (
 	github.com/stretchr/objx v0.5.2 // indirect
 	go.opencensus.io v0.24.0 // indirect
 	go.uber.org/automaxprocs v1.5.3 // indirect
+	go.uber.org/multierr v1.11.0 // indirect
 	go.uber.org/zap v1.27.0 // indirect
 	golang.org/x/exp v0.0.0-20240808152545-0cdaa3abc0fa // indirect
 	golang.org/x/net v0.38.0 // indirect
