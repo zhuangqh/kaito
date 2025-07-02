@@ -6,6 +6,6 @@ package utils
 import g "github.com/onsi/ginkgo/v2"
 
 var (
-	GinkgoLabelFastCheck = g.Label("FastCheck")
-	GinkgoLabelOffline   = g.Label("Offline")
+	GinkgoLabelFastCheck    = g.Label("FastCheck")
+	GinkgoLabelA100Required = g.Label("A100Required")
 )
