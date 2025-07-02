@@ -7,4 +7,5 @@ import g "github.com/onsi/ginkgo/v2"
 
 var (
 	GinkgoLabelFastCheck = g.Label("FastCheck")
+	GinkgoLabelOffline   = g.Label("Offline")
 )
