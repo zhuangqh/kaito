@@ -32,13 +32,13 @@ jobs:
 
       - name: Package workspace helm chart
         run: |
-          mkdir -p packaged
-          helm package charts/kaito/workspace --destination packaged
+          mkdir -p packaged-ws
+          mv charts/kaito/workspace packaged-ws
 
       - name: Publish workspace helm chart
         uses: stefanprodan/helm-gh-pages@0ad2bb377311d61ac04ad9eb6f252fb68e207260 # v1.7.0
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          charts_dir: packaged
+          charts_dir: packaged-ws
           target_dir: charts/kaito
           linting: off
