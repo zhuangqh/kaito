@@ -21,7 +21,6 @@ import (
 	"fmt"
 	"sort"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/go-logr/logr"
@@ -390,7 +389,7 @@ func (c *RAGEngineReconciler) applyRAGEngineResource(ctx context.Context, ragEng
 	}
 
 	// Ensure all gpu plugins are running successfully.
-	if strings.Contains(ragEngineObj.Spec.Compute.InstanceType, consts.GpuSkuPrefix) { // GPU skus
+	if isKnownGPUInstanceType(ragEngineObj.Spec.Compute) { // GPU skus
 		for i := range selectedNodes {
 			err = c.ensureNodePlugins(ctx, ragEngineObj, selectedNodes[i])
 			if err != nil {
@@ -429,6 +428,14 @@ func (c *RAGEngineReconciler) applyRAGEngineResource(ctx context.Context, ragEng
 	}
 
 	return nil
+}
+
+func isKnownGPUInstanceType(resource *kaitov1alpha1.ResourceSpec) bool {
+	if len(resource.PreferredNodes) > 0 {
+		return false
+	}
+	knownGPUConfig, _ := utils.GetGPUConfigBySKU(resource.InstanceType)
+	return knownGPUConfig != nil
 }
 
 // getAllQualifiedNodes returns all nodes that match the labelSelector and instanceType.

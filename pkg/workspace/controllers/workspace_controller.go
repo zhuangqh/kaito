@@ -21,7 +21,6 @@ import (
 	"fmt"
 	"sort"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/go-logr/logr"
@@ -350,7 +349,7 @@ func (c *WorkspaceReconciler) applyWorkspaceResource(ctx context.Context, wObj *
 	}
 
 	// Ensure all gpu plugins are running successfully.
-	if strings.Contains(wObj.Resource.InstanceType, consts.GpuSkuPrefix) { // GPU skus
+	if isKnownGPUInstanceType(wObj.Resource) { // GPU skus
 		for i := range selectedNodes {
 			err = c.ensureNodePlugins(ctx, wObj, selectedNodes[i])
 			if err != nil {
@@ -434,6 +433,14 @@ func (c *WorkspaceReconciler) getAllQualifiedNodes(ctx context.Context, wObj *ka
 	}
 
 	return qualifiedNodes, nil
+}
+
+func isKnownGPUInstanceType(resource kaitov1beta1.ResourceSpec) bool {
+	if len(resource.PreferredNodes) > 0 {
+		return false
+	}
+	knownGPUConfig, _ := utils.GetGPUConfigBySKU(resource.InstanceType)
+	return knownGPUConfig != nil
 }
 
 // determineNodeOSDiskSize returns the appropriate OS disk size for the workspace

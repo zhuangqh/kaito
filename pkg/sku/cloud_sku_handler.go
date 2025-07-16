@@ -69,3 +69,4 @@ func (b *generalSKUHandler) GetGPUConfigBySKU(sku string) *GPUConfig {
 	}
 	return nil
 }
+
