@@ -389,7 +389,8 @@ func (c *RAGEngineReconciler) applyRAGEngineResource(ctx context.Context, ragEng
 	}
 
 	// Ensure all gpu plugins are running successfully.
-	if isKnownGPUInstanceType(ragEngineObj.Spec.Compute) { // GPU skus
+	knownGPUConfig, _ := utils.GetGPUConfigBySKU(ragEngineObj.Spec.Compute.InstanceType)
+	if len(ragEngineObj.Spec.Compute.PreferredNodes) == 0 && knownGPUConfig != nil {
 		for i := range selectedNodes {
 			err = c.ensureNodePlugins(ctx, ragEngineObj, selectedNodes[i])
 			if err != nil {
@@ -428,14 +429,6 @@ func (c *RAGEngineReconciler) applyRAGEngineResource(ctx context.Context, ragEng
 	}
 
 	return nil
-}
-
-func isKnownGPUInstanceType(resource *kaitov1alpha1.ResourceSpec) bool {
-	if len(resource.PreferredNodes) > 0 {
-		return false
-	}
-	knownGPUConfig, _ := utils.GetGPUConfigBySKU(resource.InstanceType)
-	return knownGPUConfig != nil
 }
 
 // getAllQualifiedNodes returns all nodes that match the labelSelector and instanceType.

@@ -110,7 +110,34 @@ func TestApplyRAGEngineResource(t *testing.T) {
 			ragengine:     *test.MockRAGEngineDistributedModel,
 			expectedError: nil,
 		},
-		"Failed with NotFound error": {
+		"Successfully apply ragengine resource with nodeClaim and preferred nodes": {
+			callMocks: func(c *test.MockClient) {
+				nodeList := test.MockNodeList
+				relevantMap := c.CreateMapWithType(nodeList)
+				//insert node objects into the map
+				for _, obj := range nodeList.Items {
+					n := obj
+					objKey := client.ObjectKeyFromObject(&n)
+
+					relevantMap[objKey] = &n
+				}
+				node1 := test.MockNodeList.Items[0]
+				//insert node object into the map
+				c.CreateOrUpdateObjectInMap(&node1)
+
+				c.On("List", mock.IsType(context.Background()), mock.IsType(&karpenterv1.NodeClaimList{}), mock.Anything).Return(nil)
+				c.On("Get", mock.IsType(context.Background()), mock.Anything, mock.IsType(&karpenterv1.NodeClaim{}), mock.Anything).Return(nil)
+
+				c.On("List", mock.IsType(context.Background()), mock.IsType(&corev1.NodeList{}), mock.Anything).Return(nil)
+				// no get node query is needed here as we are not updating the node
+
+				c.On("Get", mock.IsType(context.Background()), mock.Anything, mock.IsType(&v1alpha1.RAGEngine{}), mock.Anything).Return(nil)
+				c.StatusMock.On("Update", mock.IsType(context.Background()), mock.IsType(&v1alpha1.RAGEngine{}), mock.Anything).Return(nil)
+			},
+			ragengine:     *test.MockRAGEngineWithPreferredNodes,
+			expectedError: nil,
+		},
+		"Update node Failed with NotFound error": {
 			callMocks: func(c *test.MockClient) {
 				nodeList := test.MockNodeList
 				relevantMap := c.CreateMapWithType(nodeList)
@@ -137,6 +164,7 @@ func TestApplyRAGEngineResource(t *testing.T) {
 		},
 	}
 
+	t.Setenv("CLOUD_PROVIDER", consts.AzureCloudName)
 	for k, tc := range testcases {
 		t.Run(k, func(t *testing.T) {
 			mockClient := test.NewClient()

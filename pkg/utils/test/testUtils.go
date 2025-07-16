@@ -87,14 +87,13 @@ var (
 			Namespace: "kaito",
 		},
 		Resource: v1beta1.ResourceSpec{
-			Count:        &gpuNodeCount,
-			InstanceType: "Standard_NC12s_v3",
+			Count: &gpuNodeCount,
 			LabelSelector: &metav1.LabelSelector{
 				MatchLabels: map[string]string{
 					"apps": "test",
 				},
 			},
-			PreferredNodes: []string{"node-p1", "node-p2"},
+			PreferredNodes: []string{"node1"},
 		},
 		Inference: &v1beta1.InferenceSpec{
 			Preset: &v1beta1.PresetSpec{
@@ -134,6 +133,28 @@ var (
 )
 
 var (
+	MockRAGEngineWithPreferredNodes = &v1alpha1.RAGEngine{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "testRAGEngine",
+			Namespace: "kaito",
+		},
+		Spec: &v1alpha1.RAGEngineSpec{
+			Compute: &v1alpha1.ResourceSpec{
+				Count: &gpuNodeCount,
+				LabelSelector: &metav1.LabelSelector{
+					MatchLabels: map[string]string{
+						corev1.LabelInstanceTypeStable: "Standard_NC12s_v3",
+					},
+				},
+				PreferredNodes: []string{"node1"},
+			},
+			Embedding: &v1alpha1.EmbeddingSpec{
+				Local: &v1alpha1.LocalEmbeddingSpec{
+					ModelID: "BAAI/bge-small-en-v1.5",
+				},
+			},
+		},
+	}
 	MockRAGEngine = &v1alpha1.RAGEngine{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "testRAGEngine",

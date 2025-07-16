@@ -349,7 +349,8 @@ func (c *WorkspaceReconciler) applyWorkspaceResource(ctx context.Context, wObj *
 	}
 
 	// Ensure all gpu plugins are running successfully.
-	if isKnownGPUInstanceType(wObj.Resource) { // GPU skus
+	knownGPUConfig, _ := utils.GetGPUConfigBySKU(wObj.Resource.InstanceType)
+	if len(wObj.Resource.PreferredNodes) == 0 && knownGPUConfig != nil {
 		for i := range selectedNodes {
 			err = c.ensureNodePlugins(ctx, wObj, selectedNodes[i])
 			if err != nil {
@@ -427,20 +428,14 @@ func (c *WorkspaceReconciler) getAllQualifiedNodes(ctx context.Context, wObj *ka
 		}
 
 		// match the instanceType
-		if nodeObj.Labels[corev1.LabelInstanceTypeStable] == wObj.Resource.InstanceType {
-			qualifiedNodes = append(qualifiedNodes, lo.ToPtr(nodeObj))
+		if len(wObj.Resource.PreferredNodes) == 0 { // don't match in perferred nodes mode
+			if nodeObj.Labels[corev1.LabelInstanceTypeStable] == wObj.Resource.InstanceType {
+				qualifiedNodes = append(qualifiedNodes, lo.ToPtr(nodeObj))
+			}
 		}
 	}
 
 	return qualifiedNodes, nil
-}
-
-func isKnownGPUInstanceType(resource kaitov1beta1.ResourceSpec) bool {
-	if len(resource.PreferredNodes) > 0 {
-		return false
-	}
-	knownGPUConfig, _ := utils.GetGPUConfigBySKU(resource.InstanceType)
-	return knownGPUConfig != nil
 }
 
 // determineNodeOSDiskSize returns the appropriate OS disk size for the workspace

@@ -40,6 +40,7 @@ type ResourceSpec struct {
 
 	// PreferredNodes is an optional node list specified by the user.
 	// If a node in the list does not have the required labels, it will be ignored.
+	// The system will use the `InstanceType` to create the remaining nodes.
 	// +optional
 	PreferredNodes []string `json:"preferredNodes,omitempty"`
 }
