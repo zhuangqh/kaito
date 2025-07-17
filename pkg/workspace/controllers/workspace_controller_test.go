@@ -692,6 +692,8 @@ func TestGetAllQualifiedNodes(t *testing.T) {
 			DeletionTimestamp: &v1.Time{Time: time.Now()},
 		},
 	}
+	mockWorkspaceWithPreferredNodes := test.MockWorkspaceWithPreferredNodes.DeepCopy()
+	mockWorkspaceWithPreferredNodes.Resource.PreferredNodes = []string{"node-p1", "node-p2"}
 
 	testcases := map[string]struct {
 		callMocks     func(c *test.MockClient)
@@ -797,9 +799,9 @@ func TestGetAllQualifiedNodes(t *testing.T) {
 
 				c.On("List", mock.IsType(context.Background()), mock.IsType(&corev1.NodeList{}), mock.Anything).Return(nil)
 			},
-			workspace:     test.MockWorkspaceWithPreferredNodes,
+			workspace:     mockWorkspaceWithPreferredNodes,
 			expectedError: nil,
-			expectedNodes: []string{"node1", "node-p1"},
+			expectedNodes: []string{"node-p1"},
 		},
 	}
 
@@ -893,7 +895,35 @@ func TestApplyWorkspaceResource(t *testing.T) {
 			workspace:     *test.MockWorkspaceBaseModel,
 			expectedError: nil,
 		},
-		"Failed with NotFound error": {
+		"Successfully apply workspace resource with nodeClaim and preferred nodes": {
+			callMocks: func(c *test.MockClient) {
+				nodeList := test.MockNodeList
+				relevantMap := c.CreateMapWithType(nodeList)
+				//insert node objects into the map
+				for _, obj := range nodeList.Items {
+					n := obj
+					objKey := client.ObjectKeyFromObject(&n)
+
+					relevantMap[objKey] = &n
+				}
+
+				node1 := test.MockNodeList.Items[0]
+				//insert node object into the map
+				c.CreateOrUpdateObjectInMap(&node1)
+
+				c.On("List", mock.IsType(context.Background()), mock.IsType(&karpenterv1.NodeClaimList{}), mock.Anything).Return(nil)
+				c.On("Get", mock.IsType(context.Background()), mock.Anything, mock.IsType(&karpenterv1.NodeClaim{}), mock.Anything).Return(nil)
+
+				c.On("List", mock.IsType(context.Background()), mock.IsType(&corev1.NodeList{}), mock.Anything).Return(nil)
+				// no get node query is needed here as we are not updating the node
+
+				c.On("Get", mock.IsType(context.Background()), mock.Anything, mock.IsType(&v1beta1.Workspace{}), mock.Anything).Return(nil)
+				c.StatusMock.On("Update", mock.IsType(context.Background()), mock.IsType(&v1beta1.Workspace{}), mock.Anything).Return(nil)
+			},
+			workspace:     *test.MockWorkspaceWithPreferredNodes,
+			expectedError: nil,
+		},
+		"Update node Failed with NotFound error": {
 			callMocks: func(c *test.MockClient) {
 				nodeList := test.MockNodeList
 				relevantMap := c.CreateMapWithType(nodeList)
@@ -921,6 +951,7 @@ func TestApplyWorkspaceResource(t *testing.T) {
 		},
 	}
 
+	t.Setenv("CLOUD_PROVIDER", consts.AzureCloudName)
 	for k, tc := range testcases {
 		t.Run(k, func(t *testing.T) {
 			mockClient := test.NewClient()

@@ -21,7 +21,6 @@ import (
 	"fmt"
 	"sort"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/go-logr/logr"
@@ -390,7 +389,8 @@ func (c *RAGEngineReconciler) applyRAGEngineResource(ctx context.Context, ragEng
 	}
 
 	// Ensure all gpu plugins are running successfully.
-	if strings.Contains(ragEngineObj.Spec.Compute.InstanceType, consts.GpuSkuPrefix) { // GPU skus
+	knownGPUConfig, _ := utils.GetGPUConfigBySKU(ragEngineObj.Spec.Compute.InstanceType)
+	if len(ragEngineObj.Spec.Compute.PreferredNodes) == 0 && knownGPUConfig != nil {
 		for i := range selectedNodes {
 			err = c.ensureNodePlugins(ctx, ragEngineObj, selectedNodes[i])
 			if err != nil {

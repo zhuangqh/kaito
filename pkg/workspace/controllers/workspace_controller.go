@@ -21,7 +21,6 @@ import (
 	"fmt"
 	"sort"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/go-logr/logr"
@@ -350,7 +349,8 @@ func (c *WorkspaceReconciler) applyWorkspaceResource(ctx context.Context, wObj *
 	}
 
 	// Ensure all gpu plugins are running successfully.
-	if strings.Contains(wObj.Resource.InstanceType, consts.GpuSkuPrefix) { // GPU skus
+	knownGPUConfig, _ := utils.GetGPUConfigBySKU(wObj.Resource.InstanceType)
+	if len(wObj.Resource.PreferredNodes) == 0 && knownGPUConfig != nil {
 		for i := range selectedNodes {
 			err = c.ensureNodePlugins(ctx, wObj, selectedNodes[i])
 			if err != nil {
@@ -428,8 +428,10 @@ func (c *WorkspaceReconciler) getAllQualifiedNodes(ctx context.Context, wObj *ka
 		}
 
 		// match the instanceType
-		if nodeObj.Labels[corev1.LabelInstanceTypeStable] == wObj.Resource.InstanceType {
-			qualifiedNodes = append(qualifiedNodes, lo.ToPtr(nodeObj))
+		if len(wObj.Resource.PreferredNodes) == 0 { // don't match in perferred nodes mode
+			if nodeObj.Labels[corev1.LabelInstanceTypeStable] == wObj.Resource.InstanceType {
+				qualifiedNodes = append(qualifiedNodes, lo.ToPtr(nodeObj))
+			}
 		}
 	}
 
