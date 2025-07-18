@@ -173,12 +173,10 @@ func GeneratePresetInference(ctx context.Context, workspaceObj *v1beta1.Workspac
 		SetAdapterPuller,
 	}
 
-	var depObj client.Object
 	// For multi-node distributed inference with vLLM, we need to use a StatefulSet instead of a Deployment
 	// to ensure pods are created with individual identities (their ordinal indexes) -
 	// https://kubernetes.io/docs/concepts/workloads/controllers/statefulset/#pod-identity
-	runtimeName := v1beta1.GetWorkspaceRuntimeName(workspaceObj)
-	if model.SupportDistributedInference() && runtimeName == pkgmodel.RuntimeNameVLLM && numNodes > 1 {
+	if shouldUseDistributedInference(gctx, numNodes) {
 		podOpts = append(podOpts, SetDistributedInferenceProbe)
 
 		var ssOpts []generator.TypedManifestModifier[generator.WorkspaceGeneratorContext, appsv1.StatefulSet]
@@ -198,7 +196,7 @@ func GeneratePresetInference(ctx context.Context, workspaceObj *v1beta1.Workspac
 			manifests.SetStatefulSetPodSpec(podSpec),
 		)
 
-		depObj, err = generator.GenerateManifest(gctx, ssOpts...)
+		return generator.GenerateManifest(gctx, ssOpts...)
 	} else {
 		podOpts = append(podOpts, SetDefaultModelWeightsVolume)
 
@@ -207,12 +205,16 @@ func GeneratePresetInference(ctx context.Context, workspaceObj *v1beta1.Workspac
 			return nil, err
 		}
 
-		depObj, err = generator.GenerateManifest(gctx,
+		return generator.GenerateManifest(gctx,
 			manifests.GenerateDeploymentManifest(revisionNum, numNodes),
 			manifests.SetDeploymentPodSpec(podSpec),
 		)
 	}
-	return depObj, nil
+}
+
+func shouldUseDistributedInference(ctx *generator.WorkspaceGeneratorContext, numNodes int) bool {
+	runtimeName := v1beta1.GetWorkspaceRuntimeName(ctx.Workspace)
+	return ctx.Model.SupportDistributedInference() && runtimeName == pkgmodel.RuntimeNameVLLM && numNodes > 1
 }
 
 type probeType string
