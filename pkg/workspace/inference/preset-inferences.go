@@ -419,7 +419,7 @@ func SetAdapterPuller(ctx *generator.WorkspaceGeneratorContext, spec *corev1.Pod
 	// add adapter volume mount if adapters are enabled
 	adapterVolume, adapterVolumeMount := utils.ConfigAdapterVolume()
 	spec.Volumes = append(spec.Volumes, adapterVolume)
-	for i := range spec.Containers {
+	for i := range spec.Containers { // FIXME: assume only one container in the pod
 		spec.Containers[i].VolumeMounts = append(spec.Containers[i].VolumeMounts, adapterVolumeMount)
 	}
 
@@ -428,7 +428,7 @@ func SetAdapterPuller(ctx *generator.WorkspaceGeneratorContext, spec *corev1.Pod
 	pullerContainers, pullerEnvVars, pullerVolumes := manifests.GeneratePullerContainers(ctx.Workspace, volumeMounts)
 	spec.InitContainers = append(spec.InitContainers, pullerContainers...)
 	spec.Volumes = append(spec.Volumes, pullerVolumes...)
-	for i := range spec.Containers {
+	for i := range spec.Containers { // FIXME: assume only one container in the pod
 		spec.Containers[i].Env = append(spec.Containers[i].Env, pullerEnvVars...)
 	}
 	return nil
