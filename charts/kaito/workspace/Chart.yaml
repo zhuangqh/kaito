@@ -6,30 +6,29 @@ type: application
 # This is the chart version. This version number should be incremented each time you make changes
 # to the chart and its templates, including the app version.
 # Versions are expected to follow Semantic Versioning (https://semver.org/)
-version: 0.5.0
+version: 0.5.1
 
 # This is the version number of the application being deployed. This version number should be
 # incremented each time you make changes to the application. Versions are not expected to
 # follow Semantic Versioning. They should reflect the version the application is using.
 # It is recommended to use it with quotes.
-appVersion: 0.5.0
+appVersion: 0.5.1
 home: https://github.com/kaito-project/kaito
 sources:
   - https://github.com/kaito-project/kaito
 maintainers:
   - name: Fei-Guo
     email: vrgf2003@gmail.com
-  - name: helayoty
-    email: hebaelayoty@gmail.com
-  - name: ishaansehgal99
-    email: ishaanforthewin@gmail.com
+  - name: zhuangqh
+    email: zhuangqhc@gmail.com
+  - name: chewong
+    email: chwong719@gmail.com
 annotations:
   artifacthub.io/category: ai-machine-learning
-  artifacthub.io/license: MIT
+  artifacthub.io/license: Apache-2.0
   artifacthub.io/links: |
     - name: GitHub
         url: https://github.com/kaito-project/kaito
     - name: Examples
       url: https://github.com/kaito-project/kaito/tree/main/examples
   artifacthub.io/prerelease: "false"
-  
