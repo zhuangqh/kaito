@@ -205,7 +205,7 @@ func GeneratePresetInference(ctx context.Context, workspaceObj *v1beta1.Workspac
 }
 
 func getGPUConfig(ctx *generator.WorkspaceGeneratorContext) sku.GPUConfig {
-	var gpuConfig *sku.GPUConfig = nil
+	var gpuConfig *sku.GPUConfig
 	var err error
 	// 1. try to get GPU config from known sku if instanceType is set
 	if len(ctx.Workspace.Resource.PreferredNodes) == 0 {
