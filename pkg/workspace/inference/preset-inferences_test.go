@@ -953,36 +953,6 @@ func TestSetModelDownloadInfo(t *testing.T) {
 			expectedInitContainer: 1, // Expecting model-weights-downloader
 			expectError:           false,
 		},
-		"empty model access secret - error": {
-			workspace: &v1beta1.Workspace{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-workspace",
-					Namespace: "default",
-				},
-				Inference: &v1beta1.InferenceSpec{
-					Preset: &v1beta1.PresetSpec{
-						PresetMeta: v1beta1.PresetMeta{
-							Name: "test-model-download",
-						},
-						PresetOptions: v1beta1.PresetOptions{
-							ModelAccessSecret: "",
-						},
-					},
-				},
-			},
-			modelName: "test-model-download",
-			spec: &corev1.PodSpec{
-				Containers: []corev1.Container{
-					{
-						Name: "test-container",
-					},
-				},
-			},
-			expectedEnvVars:       []corev1.EnvVar{},
-			expectedInitContainer: 0,
-			expectError:           true,
-			expectedErrorMsg:      "ModelAccessSecret is not set for model download",
-		},
 	}
 
 	for name, tc := range testcases {

@@ -405,9 +405,6 @@ func GenerateInferencePodSpec(gpuConfig *sku.GPUConfig, numNodes int) func(*gene
 
 func SetModelDownloadInfo(ctx *generator.WorkspaceGeneratorContext, spec *corev1.PodSpec) error {
 	if ctx.Model.GetInferenceParameters().DownloadAtRuntime {
-		if ctx.Workspace.Inference.Preset.PresetOptions.ModelAccessSecret == "" {
-			return fmt.Errorf("ModelAccessSecret is not set for model download")
-		}
 		envvar := corev1.EnvVar{
 			Name: "HF_TOKEN",
 			ValueFrom: &corev1.EnvVarSource{
