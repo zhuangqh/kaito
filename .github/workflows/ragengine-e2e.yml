@@ -32,4 +32,3 @@ jobs:
     with:
       git_sha: ${{ github.event.pull_request.head.sha }}
       node_provisioner: ${{ matrix.node-provisioner }}
-      region: ${{ env.AZURE_LOCATION }}
