@@ -36,7 +36,7 @@ import (
 )
 
 const (
-	PresetPhi3Mini128kModel = "phi-3-mini-128k-instruct"
+	PresetPhi4MiniInstructModel = "phi-4-mini-instruct"
 )
 
 func loadTestEnvVars() {
@@ -267,10 +267,10 @@ func createPhi3WorkspaceWithPresetPublicModeAndVLLM(numOfReplica int) *kaitov1be
 	workspaceObj := &kaitov1beta1.Workspace{}
 	By("Creating a workspace CR with Phi-3-mini-128k-instruct preset public mode and vLLM", func() {
 		uniqueID := fmt.Sprint("preset-phi3-", rand.Intn(1000))
-		workspaceObj = utils.GenerateInferenceWorkspaceManifestWithVLLM(uniqueID, namespaceName, "", numOfReplica, "Standard_NC6s_v3",
+		workspaceObj = utils.GenerateInferenceWorkspaceManifestWithVLLM(uniqueID, namespaceName, "", numOfReplica, "Standard_NC8as_T4_v3",
 			&metav1.LabelSelector{
-				MatchLabels: map[string]string{"kaito-workspace": "rag-e2e-test-phi-3-mini-128k-instruct-vllm"},
-			}, nil, PresetPhi3Mini128kModel, nil, nil, nil, "")
+				MatchLabels: map[string]string{"kaito-workspace": "rag-e2e-test-phi-4-mini-instruct-vllm"},
+			}, nil, PresetPhi4MiniInstructModel, nil, nil, nil, "")
 
 		createAndValidateWorkspace(workspaceObj)
 	})
@@ -372,9 +372,9 @@ func createLocalEmbeddingKaitoVLLMRAGEngine(baseURL string) *kaitov1alpha1.RAGEn
 	serviceURL := fmt.Sprintf("http://%s/v1/completions", baseURL)
 	By("Creating RAG with localembedding and kaito vllm inference", func() {
 		uniqueID := fmt.Sprint("rag-", rand.Intn(1000))
-		ragEngineObj = GenerateLocalEmbeddingRAGEngineManifest(uniqueID, namespaceName, "Standard_NC24s_v3", "BAAI/bge-small-en-v1.5",
+		ragEngineObj = GenerateLocalEmbeddingRAGEngineManifest(uniqueID, namespaceName, "Standard_NC8as_T4_v3", "BAAI/bge-small-en-v1.5",
 			&metav1.LabelSelector{
-				MatchLabels: map[string]string{"apps": "phi-3"},
+				MatchLabels: map[string]string{"apps": "phi-4"},
 			},
 			&kaitov1alpha1.InferenceServiceSpec{
 				URL: serviceURL,
@@ -410,7 +410,7 @@ func createLocalEmbeddingHFURLRAGEngine() *kaitov1alpha1.RAGEngine {
 	hfURL := "https://api-inference.huggingface.co/models/HuggingFaceH4/zephyr-7b-beta/v1/completions"
 	By("Creating RAG with localembedding and huggingface API", func() {
 		uniqueID := fmt.Sprint("rag-", rand.Intn(1000))
-		ragEngineObj = GenerateLocalEmbeddingRAGEngineManifest(uniqueID, namespaceName, "Standard_NC12s_v3", "BAAI/bge-small-en-v1.5",
+		ragEngineObj = GenerateLocalEmbeddingRAGEngineManifest(uniqueID, namespaceName, "Standard_NC8as_T4_v3", "BAAI/bge-small-en-v1.5",
 			&metav1.LabelSelector{
 				MatchLabels: map[string]string{"apps": "phi-3"},
 			},
