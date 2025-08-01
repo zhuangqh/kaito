@@ -25,6 +25,7 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/samber/lo"
 	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -277,7 +278,43 @@ func createPhi3WorkspaceWithPresetPublicModeAndVLLM(numOfReplica int) *kaitov1be
 	return workspaceObj
 }
 
+func createConfigForWorkspace(workspaceObj *kaitov1beta1.Workspace) {
+	if workspaceObj.Inference == nil || workspaceObj.Resource.InstanceType == "" {
+		return
+	}
+
+	// TODO: uncomment the following lines when A10 GPU support is added
+	// handler := sku.GetCloudSKUHandler(consts.AzureCloudName)
+	// gpuConfig := handler.GetGPUConfigBySKU(workspaceObj.Resource.InstanceType)
+	// if gpuConfig == nil || (gpuConfig.GPUCount <= 1 && lo.FromPtr(workspaceObj.Resource.Count) <= 1) {
+	// 	return
+	// }
+
+	By("Creating config file", func() {
+		cm := corev1.ConfigMap{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "inference-config",
+				Namespace: workspaceObj.Namespace,
+			},
+			Data: map[string]string{
+				"inference_config.yaml": `
+vllm:
+  max-model-len: 4096
+`,
+			},
+		}
+		workspaceObj.Inference.Config = cm.Name
+
+		Eventually(func() error {
+			err := utils.TestingCluster.KubeClient.Create(ctx, &cm, &client.CreateOptions{})
+			return client.IgnoreAlreadyExists(err)
+		}, utils.PollTimeout, utils.PollInterval).
+			Should(Succeed(), "Failed to create configmap %s", cm.Name)
+	})
+}
+
 func createAndValidateWorkspace(workspaceObj *kaitov1beta1.Workspace) {
+	createConfigForWorkspace(workspaceObj)
 	By("Creating workspace", func() {
 		Eventually(func() error {
 			return utils.TestingCluster.KubeClient.Create(ctx, workspaceObj, &client.CreateOptions{})
