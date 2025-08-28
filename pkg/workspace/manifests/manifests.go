@@ -111,59 +111,6 @@ func GenerateServiceManifest(workspaceObj *kaitov1beta1.Workspace, serviceType c
 	}
 }
 
-func GenerateStatefulSetManifest(revisionNum string, replicas int) func(*generator.WorkspaceGeneratorContext, *appsv1.StatefulSet) error {
-	return func(ctx *generator.WorkspaceGeneratorContext, ss *appsv1.StatefulSet) error {
-		selector := map[string]string{
-			kaitov1beta1.LabelWorkspaceName: ctx.Workspace.Name,
-		}
-		labelselector := &metav1.LabelSelector{
-			MatchLabels: selector,
-		}
-
-		ss.ObjectMeta = metav1.ObjectMeta{
-			Name:      ctx.Workspace.Name,
-			Namespace: ctx.Workspace.Namespace,
-			Annotations: map[string]string{
-				kaitov1beta1.WorkspaceRevisionAnnotation: revisionNum,
-			},
-			OwnerReferences: []metav1.OwnerReference{
-				*metav1.NewControllerRef(ctx.Workspace, kaitov1beta1.GroupVersion.WithKind("Workspace")),
-			},
-		}
-		ss.Spec = appsv1.StatefulSetSpec{
-			Replicas:            lo.ToPtr(int32(replicas)),
-			PodManagementPolicy: appsv1.ParallelPodManagement,
-			PersistentVolumeClaimRetentionPolicy: &appsv1.StatefulSetPersistentVolumeClaimRetentionPolicy{
-				WhenScaled:  appsv1.RetainPersistentVolumeClaimRetentionPolicyType,
-				WhenDeleted: appsv1.DeletePersistentVolumeClaimRetentionPolicyType,
-			},
-			Selector: labelselector,
-			Template: corev1.PodTemplateSpec{
-				ObjectMeta: metav1.ObjectMeta{
-					Labels: selector,
-				},
-			},
-		}
-
-		ss.Spec.ServiceName = fmt.Sprintf("%s-headless", ctx.Workspace.Name)
-		return nil
-	}
-}
-
-func AddStatefulSetVolumeClaimTemplates(volumeClaimTemplates corev1.PersistentVolumeClaim) func(*generator.WorkspaceGeneratorContext, *appsv1.StatefulSet) error {
-	return func(ctx *generator.WorkspaceGeneratorContext, ss *appsv1.StatefulSet) error {
-		ss.Spec.VolumeClaimTemplates = append(ss.Spec.VolumeClaimTemplates, volumeClaimTemplates)
-		return nil
-	}
-}
-
-func SetStatefulSetPodSpec(podSpec *corev1.PodSpec) func(*generator.WorkspaceGeneratorContext, *appsv1.StatefulSet) error {
-	return func(ctx *generator.WorkspaceGeneratorContext, ss *appsv1.StatefulSet) error {
-		ss.Spec.Template.Spec = *podSpec
-		return nil
-	}
-}
-
 func GenerateTuningJobManifest(revisionNum string) func(*generator.WorkspaceGeneratorContext, *batchv1.Job) error {
 	return func(ctx *generator.WorkspaceGeneratorContext, j *batchv1.Job) error {
 		labels := map[string]string{
