@@ -458,16 +458,11 @@ func GetExistingNodeClaims(ctx context.Context, c client.Reader, wObj *kaitov1be
 	return nodeClaims, nil
 }
 
-// GetRequiredNodeClaimsCount returns the number of NodeClaims required for the given workspace
-func GetRequiredNodeClaimsCount(ctx context.Context, c client.Client, wObj *kaitov1beta1.Workspace) (int, error) {
-	// if node provision is disabled, NodeClaims are not needed.
-	if featuregates.FeatureGates[consts.FeatureFlagDisableNodeAutoProvisioning] {
-		return 0, nil
-	}
-
-	availableBYONodes, err := resources.GetBringYourOwnNodes(ctx, c, wObj)
+// ResolveReadyNodesAndTargetNodeClaimCount returns all ready nodes and the number of target NodeClaims(nodes) for the given workspace
+func ResolveReadyNodesAndTargetNodeClaimCount(ctx context.Context, c client.Client, wObj *kaitov1beta1.Workspace) ([]string, int, error) {
+	availableBYONodes, readyNodes, err := resources.GetBYOAndReadyNodes(ctx, c, wObj)
 	if err != nil {
-		return 0, fmt.Errorf("failed to get available BYO nodes: %w", err)
+		return nil, 0, fmt.Errorf("failed to get available BYO nodes: %w", err)
 	}
 
 	targetNodeCount := 1
@@ -475,6 +470,55 @@ func GetRequiredNodeClaimsCount(ctx context.Context, c client.Client, wObj *kait
 		targetNodeCount = int(wObj.Status.Inference.TargetNodeCount)
 	}
 
-	// Calculate the number of NodeClaims needed (target - BYO nodes)
-	return max(0, targetNodeCount-len(availableBYONodes)), nil
+	// Calculate the number of target NodeClaims(nodes) (target - BYO nodes)
+	targetNodeClaimCount := max(0, targetNodeCount-len(availableBYONodes))
+
+	// if node provision is disabled, NodeClaims(nodes) are not needed.
+	if featuregates.FeatureGates[consts.FeatureFlagDisableNodeAutoProvisioning] {
+		targetNodeClaimCount = 0
+	}
+
+	return readyNodes, targetNodeClaimCount, nil
+}
+
+// HasPodRunningOnNode checks if there is a pod running on the node claimed by the NodeClaim
+func HasPodRunningOnNode(ctx context.Context, c client.Client, wObj *kaitov1beta1.Workspace, nodeClaimObj *karpenterv1.NodeClaim) bool {
+	if nodeClaimObj.Status.NodeName == "" {
+		return false
+	}
+	podList := &v1.PodList{}
+	listOpts := []client.ListOption{
+		client.InNamespace(wObj.Namespace),
+		client.MatchingLabels{
+			kaitov1beta1.LabelWorkspaceName:      wObj.Name,
+			kaitov1beta1.LabelWorkspaceNamespace: wObj.Namespace,
+		},
+	}
+
+	if err := c.List(ctx, podList, listOpts...); err != nil {
+		return false
+	}
+
+	for _, pod := range podList.Items {
+		if pod.Spec.NodeName == nodeClaimObj.Status.NodeName {
+			return true
+		}
+	}
+
+	return false
+}
+
+// IsNodeClaimReadyNotDeleting checks if a NodeClaim is in ready state and not being deleted
+func IsNodeClaimReadyNotDeleting(nodeClaim *karpenterv1.NodeClaim) bool {
+	if !nodeClaim.DeletionTimestamp.IsZero() {
+		return false
+	}
+
+	for _, condition := range nodeClaim.Status.Conditions {
+		if condition.Type == "Ready" {
+			return condition.Status == "True"
+		}
+	}
+
+	return nodeClaim.Status.NodeName != ""
 }
