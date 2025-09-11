@@ -316,6 +316,52 @@ var _ = Describe("Workspace Preset on vllm runtime", func() {
 		validateCompletionsEndpoint(workspaceObj)
 		validateGatewayAPIInferenceExtensionResources(workspaceObj)
 	})
+
+	It("should create a gpt-oss-20b workspace with preset public mode successfully", utils.GinkgoLabelFastCheck, func() {
+		numOfNode := 1
+		workspaceObj := createGPTOss20BWorkspaceWithPresetPublicModeAndVLLM(numOfNode)
+
+		defer cleanupResources(workspaceObj)
+		time.Sleep(30 * time.Second)
+
+		validateCreateNode(workspaceObj, numOfNode)
+		validateResourceStatus(workspaceObj)
+
+		time.Sleep(30 * time.Second)
+
+		validateAssociatedService(workspaceObj)
+		validateInferenceConfig(workspaceObj)
+
+		validateInferenceResource(workspaceObj, int32(numOfNode), false)
+
+		validateWorkspaceReadiness(workspaceObj)
+		validateModelsEndpoint(workspaceObj)
+		validateCompletionsEndpoint(workspaceObj)
+		validateGatewayAPIInferenceExtensionResources(workspaceObj)
+	})
+
+	It("should create a gpt-oss-120b workspace with preset public mode successfully", utils.GinkgoLabelA100Required, func() {
+		numOfNode := 1
+		workspaceObj := createGPTOss120BWorkspaceWithPresetPublicModeAndVLLM(numOfNode)
+
+		defer cleanupResources(workspaceObj)
+		time.Sleep(30 * time.Second)
+
+		validateCreateNode(workspaceObj, numOfNode)
+		validateResourceStatus(workspaceObj)
+
+		time.Sleep(30 * time.Second)
+
+		validateAssociatedService(workspaceObj)
+		validateInferenceConfig(workspaceObj)
+
+		validateInferenceResource(workspaceObj, int32(numOfNode), false)
+
+		validateWorkspaceReadiness(workspaceObj)
+		validateModelsEndpoint(workspaceObj)
+		validateCompletionsEndpoint(workspaceObj)
+		validateGatewayAPIInferenceExtensionResources(workspaceObj)
+	})
 })
 
 func createDeepSeekLlama8BWorkspaceWithPresetPublicModeAndVLLM(numOfNode int) *kaitov1beta1.Workspace {
@@ -453,6 +499,43 @@ func createLlama3_3_70BInstructWorkspaceWithPresetPublicModeAndVLLM(numOfNode in
 			&metav1.LabelSelector{
 				MatchLabels: map[string]string{"kaito-workspace": "public-preset-e2e-test-llama3-3-70b-vllm"},
 			}, nil, PresetLlama3_3_70BInstruct, nil, nil, nil, modelSecret.Name) // Llama 3.3-70B Instruct model requires a model access secret
+		createAndValidateWorkspace(workspaceObj)
+	})
+	return workspaceObj
+}
+
+func createGPTOss20BWorkspaceWithPresetPublicModeAndVLLM(numOfNode int) *kaitov1beta1.Workspace {
+	workspaceObj := &kaitov1beta1.Workspace{}
+
+	By("Creating a workspace CR with GPT-OSS-20B preset public mode and vLLM", func() {
+		uniqueID := fmt.Sprint("preset-gpt-oss-20b-", rand.Intn(1000))
+		workspaceObj = utils.GenerateInferenceWorkspaceManifestWithVLLM(uniqueID, namespaceName, "", numOfNode, "Standard_NV36ads_A10_v5",
+			&metav1.LabelSelector{
+				MatchLabels: map[string]string{"kaito-workspace": "public-preset-e2e-test-gpt-oss-20b-vllm"},
+			}, nil, PresetGPT_OSS_20BModel, nil, nil, nil, "")
+
+		// Pass custom config data with gpu-memory-utilization and max-model-len
+		customConfigData := map[string]string{
+			"inference_config.yaml": `vllm:
+  gpu-memory-utilization: 0.82  # Controls GPU memory usage (0.0-1.0)
+  max-model-len: 1024`,
+		}
+
+		createAndValidateWorkspace(workspaceObj, customConfigData)
+	})
+
+	return workspaceObj
+}
+
+func createGPTOss120BWorkspaceWithPresetPublicModeAndVLLM(numOfNode int) *kaitov1beta1.Workspace {
+	workspaceObj := &kaitov1beta1.Workspace{}
+	By("Creating a workspace CR with GPT-OSS-120B preset public mode and vLLM", func() {
+		uniqueID := fmt.Sprint("preset-gpt-oss-120b-", rand.Intn(1000))
+		workspaceObj = utils.GenerateInferenceWorkspaceManifestWithVLLM(uniqueID, namespaceName, "", numOfNode, "Standard_NC24ads_A100_v4",
+			&metav1.LabelSelector{
+				MatchLabels: map[string]string{"kaito-workspace": "public-preset-e2e-test-gpt-oss-120b-vllm"},
+			}, nil, PresetGPT_OSS_120BModel, nil, nil, nil, "")
+
 		createAndValidateWorkspace(workspaceObj)
 	})
 	return workspaceObj
