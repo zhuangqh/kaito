@@ -27,7 +27,7 @@ def liveness(args):
     inference_job = next(
         filter(
             lambda job: job.entrypoint.startswith(
-                "python3 /workspace/vllm/inference_api.py"
+                "VLLM::EngineCore"
             ),
             list_jobs(address=gcs),
         ),
