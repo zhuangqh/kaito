@@ -61,11 +61,10 @@ type gpt_oss_20B struct{}
 
 func (*gpt_oss_20B) GetInferenceParameters() *model.PresetParam {
 	return &model.PresetParam{
-		Metadata:               metadata.MustGet(PresetGPT_OSS_20BModel),
-		DiskStorageRequirement: "110Gi",
-		GPUCountRequirement:    "1",
-		// TotalSafeTensorFileSize: "16Gi", // per https://openai.com/index/introducing-gpt-oss/
-		TotalSafeTensorFileSize: "25.63Gi", // TODO: pod failed with out of memory error on A10 with 24 GB memory.
+		Metadata:                metadata.MustGet(PresetGPT_OSS_20BModel),
+		DiskStorageRequirement:  "110Gi",
+		GPUCountRequirement:     "1",
+		TotalSafeTensorFileSize: "12.9Gi", // TODO: pod failed with out of memory error on A10 with 24 GB memory.
 		BytesPerToken:           34560,
 		RuntimeParam: model.RuntimeParam{
 			Transformers: model.HuggingfaceTransformersParam{
