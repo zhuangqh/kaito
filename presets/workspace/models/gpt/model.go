@@ -49,9 +49,7 @@ var (
 		"pipeline":           "text-generation",
 		"allow_remote_files": "",
 	}
-	gptRunParamsVLLM = map[string]string{
-		"dtype": "bfloat16",
-	}
+	gptRunParamsVLLM = map[string]string{}
 )
 
 var gptOss20b gpt_oss_20B
