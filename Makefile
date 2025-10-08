@@ -2,7 +2,7 @@
 # Image URL to use all building/pushing image targets
 REGISTRY ?= YOUR_REGISTRY
 IMG_NAME ?= workspace
-VERSION ?= v0.7.0
+VERSION ?= v0.7.1
 GPU_PROVISIONER_VERSION ?= 0.3.6
 RAGENGINE_IMG_NAME ?= ragengine
 IMG_TAG ?= $(subst v,,$(VERSION))
@@ -583,11 +583,11 @@ fmt: ## Run go fmt against code.
 .PHONY: release-manifest
 release-manifest: ## Update manifest and Helm charts for release.
 	@sed -i -e 's/^VERSION ?= .*/VERSION ?= ${VERSION}/' ./Makefile
-	@sed -i -e "s/version: .*/version: ${IMG_TAG}/" ./charts/kaito/workspace/Chart.yaml
+	@sed -i -e "0,/^version: .*/s/^version: .*/version: ${IMG_TAG}/" ./charts/kaito/workspace/Chart.yaml
 	@sed -i -e "s/appVersion: .*/appVersion: ${IMG_TAG}/" ./charts/kaito/workspace/Chart.yaml
 	@sed -i -e "s/tag: .*/tag: ${IMG_TAG}/" ./charts/kaito/workspace/values.yaml
 	@sed -i -e 's/IMG_TAG=.*/IMG_TAG=${IMG_TAG}/' ./charts/kaito/workspace/README.md
-	@sed -i -e "s/version: .*/version: ${IMG_TAG}/" ./charts/kaito/ragengine/Chart.yaml
+	@sed -i -e "0,/^version: .*/s/^version: .*/version: ${IMG_TAG}/" ./charts/kaito/ragengine/Chart.yaml
 	@sed -i -e "s/appVersion: .*/appVersion: ${IMG_TAG}/" ./charts/kaito/ragengine/Chart.yaml
 	@sed -i -e "s/tag: .*/tag: ${IMG_TAG}/" ./charts/kaito/ragengine/values.yaml
 	@sed -i -e "s/presetRagImageTag: .*/presetRagImageTag: ${IMG_TAG}/" ./charts/kaito/ragengine/values.yaml
