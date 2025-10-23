@@ -20,8 +20,12 @@ jobs:
       - self-hosted
       - 1ES.Pool=1es-aks-kaito-agent-pool-ubuntu
     steps:
+      - name: Clone Repository
+        uses: actions/checkout@v4
       - name: Setup QEMU
         uses: docker/setup-qemu-action@v3
+      - name: Setup BuildX
+        uses: docker/setup-buildx-action@v3
       - name: Azure Login
         run: az login --identity
       - name: ACR Login
