@@ -13,6 +13,9 @@ RUN apt-get update && apt-get upgrade -y \
 
 FROM dependencies AS base
 
+ARG VERSION
+ENV VERSION=$VERSION
+
 WORKDIR /app
 
 # Set the PYTHONPATH environment variable
