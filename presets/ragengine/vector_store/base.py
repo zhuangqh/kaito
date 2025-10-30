@@ -28,15 +28,12 @@ from llama_index.core import Document as LlamaDocument
 from llama_index.core import StorageContext, VectorStoreIndex, load_index_from_storage
 from llama_index.core.base.llms.types import MessageRole
 from llama_index.core.chat_engine.types import ChatMode
-from llama_index.core.postprocessor import LLMRerank  # Query with LLM Reranking
 from llama_index.core.storage.docstore import SimpleDocumentStore
 from llama_index.vector_stores.faiss import FaissMapVectorStore
 from openai.types.chat import ChatCompletionContentPartTextParam, CompletionCreateParams
 from pydantic import ValidationError
 
 from ragengine.config import (
-    LLM_RERANKER_BATCH_SIZE,
-    LLM_RERANKER_TOP_N,
     RAG_DEFAULT_CONTEXT_TOKEN_FILL_RATIO,
     RAG_DOCUMENT_NODE_TOKEN_APPROXIMATION,
     RAG_SIMILARITY_THRESHOLD,
@@ -167,84 +164,6 @@ class BaseVectorStore(ABC):
                 index.set_index_id(index_name)
                 self.index_map[index_name] = index
         return indexed_doc_ids
-
-    async def query(
-        self,
-        index_name: str,
-        query: str,
-        top_k: int,
-        llm_params: dict,
-        rerank_params: dict,
-    ):
-        """
-        Query the indexed documents
-
-        Args:
-            index_name (str): Name of the index to query
-            query (str): Query string
-            top_k (int): Number of initial top results to retrieve
-            llm_params (dict): Optional parameters for the language model
-            rerank_params (dict): Optional configuration for reranking
-                - 'top_n' (int): Number of top documents to return after reranking
-                - 'choice_batch_size' (int):  Number of documents to process in each batch
-
-        Returns:
-            dict: A dictionary containing the response and source nodes.
-        """
-        if index_name not in self.index_map:
-            raise HTTPException(
-                status_code=404, detail=f"No such index: '{index_name}' exists."
-            )
-
-        node_postprocessors = []
-        if rerank_params:
-            # Set default reranking parameters and merge with provided params
-            default_rerank_params = {
-                "choice_batch_size": LLM_RERANKER_BATCH_SIZE,  # Default batch size
-                "top_n": min(
-                    LLM_RERANKER_TOP_N, top_k
-                ),  # Limit top_n to top_k by default
-            }
-            rerank_params = {**default_rerank_params, **rerank_params}
-
-            # Add LLMRerank to postprocessors
-            node_postprocessors.append(
-                LLMRerank(
-                    llm=self.llm,
-                    choice_batch_size=rerank_params["choice_batch_size"],
-                    top_n=rerank_params["top_n"],
-                )
-            )
-
-        query_engine = self.index_map[index_name].as_chat_engine(
-            llm=self.llm,
-            similarity_top_k=top_k,
-            node_postprocessors=node_postprocessors,
-            chat_mode=ChatMode.CONDENSE_PLUS_CONTEXT,
-            verbose=True,
-        )
-
-        if self.use_rwlock:
-            async with self.rwlock.reader_lock:
-                self.llm.set_params(llm_params)
-                query_result = await query_engine.achat(query)
-        else:
-            self.llm.set_params(llm_params)
-            query_result = await query_engine.achat(query)
-        return {
-            "response": query_result.response,
-            "source_nodes": [
-                {
-                    "doc_id": source_node.node.ref_doc_id,
-                    "node_id": source_node.node_id,
-                    "text": source_node.text,
-                    "score": source_node.score,
-                    "metadata": source_node.metadata,
-                }
-                for source_node in query_result.source_nodes
-            ],
-            "metadata": query_result.metadata,
-        }
 
     async def chat_completion(self, request: dict) -> ChatCompletionResponse:
         """
