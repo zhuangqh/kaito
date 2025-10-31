@@ -116,22 +116,13 @@ func CreatePresetRAG(ctx context.Context, ragEngineObj *v1alpha1.RAGEngine, revi
 	var resourceReq corev1.ResourceRequirements
 
 	if ragEngineObj.Spec.Embedding.Local != nil {
-		var skuNumGPUs int
-		var gpuConfig *sku.GPUConfig = nil
+		var gpuConfig *sku.GPUConfig
 		var err error
-		if len(ragEngineObj.Spec.Compute.PreferredNodes) == 0 {
-			gpuConfig, _ = utils.GetGPUConfigBySKU(ragEngineObj.Spec.Compute.InstanceType)
+		gpuConfig, err = utils.GetGPUConfigBySKU(ragEngineObj.Spec.Compute.InstanceType)
+		if err != nil {
+			return nil, err
 		}
-		if gpuConfig != nil {
-			skuNumGPUs = gpuConfig.GPUCount
-		} else {
-			gpuConfig, err = utils.TryGetGPUConfigFromNode(ctx, kubeClient, ragEngineObj.Status.WorkerNodes)
-			if err != nil {
-				skuNumGPUs = 0
-			} else if gpuConfig != nil {
-				skuNumGPUs = gpuConfig.GPUCount
-			}
-		}
+		skuNumGPUs := gpuConfig.GPUCount
 
 		resourceReq = corev1.ResourceRequirements{
 			Requests: corev1.ResourceList{

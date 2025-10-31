@@ -17,6 +17,7 @@ import (
 	"context"
 	"fmt"
 
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/retry"
@@ -26,6 +27,7 @@ import (
 
 	kaitov1beta1 "github.com/kaito-project/kaito/api/v1beta1"
 	"github.com/kaito-project/kaito/pkg/utils"
+	"github.com/kaito-project/kaito/pkg/utils/consts"
 	"github.com/kaito-project/kaito/pkg/utils/nodeclaim"
 	"github.com/kaito-project/kaito/pkg/utils/plugin"
 	"github.com/kaito-project/kaito/pkg/utils/workspace"
@@ -47,23 +49,31 @@ func NewNodeClaimManager(c client.Client, recorder record.EventRecorder, expecta
 	}
 }
 
-// CheckNodeClaims checks the current state of NodeClaims with the target count recorded in the workspace.Status.
-func (c *NodeClaimManager) CheckNodeClaims(ctx context.Context, wObj *kaitov1beta1.Workspace) (int, []*karpenterv1.NodeClaim, []string, error) {
-	var addedNodeClaimsCount int
+// GetNumNodeClaimsNeeded calculates how many NodeClaims are needed to meet the target node count for the workspace.
+func (c *NodeClaimManager) GetNumNodeClaimsNeeded(ctx context.Context, wObj *kaitov1beta1.Workspace, readyNodes []*corev1.Node) int {
+	targetNodeCount := int(wObj.Status.TargetNodeCount)
 
-	// Calculate the number of NodeClaims required (target - BYO nodes)
-	readyNodes, targetNodeClaimsCount, err := nodeclaim.ResolveReadyNodesAndTargetNodeClaimCount(ctx, c.Client, wObj)
-	if err != nil {
-		return addedNodeClaimsCount, nil, nil, fmt.Errorf("failed to get required NodeClaims: %w", err)
+	// Count ready nodes that do NOT have a corresponding NodeClaim
+	readyNodesWithoutNodeClaim := 0
+
+	for _, node := range readyNodes {
+		if _, ok := node.Labels[consts.LabelNodePool]; !ok {
+			readyNodesWithoutNodeClaim++
+		}
 	}
 
+	// Calculate how many NodeClaims we need, including those already provisioned.
+	targetNodeClaimCount := max(0, targetNodeCount-readyNodesWithoutNodeClaim)
+
+	return targetNodeClaimCount
+}
+
+// CheckNodeClaims checks the current state of NodeClaims for the given workspace and determines how many additional NodeClaims need to be created to meet the target node count.
+func (c *NodeClaimManager) CheckNodeClaims(ctx context.Context, wObj *kaitov1beta1.Workspace, readyNodes []*corev1.Node) (int, []*karpenterv1.NodeClaim, error) {
+	// We don't care in this case if the ready nodes come from NodeClaims, meaning ready nodes could come from BYO if the right size and properly labeled.
 	ncList, err := nodeclaim.ListNodeClaim(ctx, wObj, c.Client)
 	if err != nil {
-		return addedNodeClaimsCount, nil, nil, fmt.Errorf("failed to get existing NodeClaims: %w", err)
-	}
-
-	if targetNodeClaimsCount > len(ncList.Items) {
-		addedNodeClaimsCount = targetNodeClaimsCount - len(ncList.Items)
+		return 0, nil, fmt.Errorf("failed to get existing NodeClaims: %w", err)
 	}
 
 	nodeClaims := make([]*karpenterv1.NodeClaim, 0, len(ncList.Items))
@@ -71,7 +81,18 @@ func (c *NodeClaimManager) CheckNodeClaims(ctx context.Context, wObj *kaitov1bet
 		nodeClaims = append(nodeClaims, &ncList.Items[i])
 	}
 
-	return addedNodeClaimsCount, nodeClaims, readyNodes, nil
+	klog.InfoS("Existing NodeClaims fetched", "count", len(nodeClaims), "workspace", klog.KObj(wObj))
+
+	// Calculate the total number of NodeClaims needed.
+	numNodeClaimsNeeded := c.GetNumNodeClaimsNeeded(ctx, wObj, readyNodes)
+	klog.InfoS("NodeClaims needed calculation", "needed", numNodeClaimsNeeded, "workspace", klog.KObj(wObj))
+
+	// Then, the number of NodeClaims to create is the difference between the total number needed and number of existing NodeClaims.
+	numNodeClaimsToCreate := max(0, numNodeClaimsNeeded-len(nodeClaims))
+
+	klog.InfoS("Number of NodeClaims to create", "count", numNodeClaimsToCreate)
+
+	return numNodeClaimsToCreate, nodeClaims, nil
 }
 
 // CreateUpNodeClaims creates a specified number of NodeClaims as defined by nodesToCreate for the given workspace.
@@ -116,13 +137,9 @@ func (c *NodeClaimManager) CreateUpNodeClaims(ctx context.Context, wObj *kaitov1
 	return nil
 }
 
-// AreNodeClaimsReady is used for checking the number of ready nodeclaims(isNodeClaimReadyNotDeleting) meet the target NodeClaim count needed
-func (c *NodeClaimManager) AreNodeClaimsReady(ctx context.Context, wObj *kaitov1beta1.Workspace, existingNodeClaims []*karpenterv1.NodeClaim) (bool, error) {
-	// Calculate the actual number of NodeClaims needed (if BYO, numtargetNodes == 0)
-	_, targetNodeClaimCount, err := nodeclaim.ResolveReadyNodesAndTargetNodeClaimCount(ctx, c.Client, wObj)
-	if err != nil {
-		return false, fmt.Errorf("failed to resolve target NodeClaim count: %w", err)
-	}
+// EnsureNodeClaimsReady is used for checking the number of ready nodeclaims(isNodeClaimReadyNotDeleting) meet the target NodeClaim count needed. Updates the
+func (c *NodeClaimManager) EnsureNodeClaimsReady(ctx context.Context, wObj *kaitov1beta1.Workspace, readyNodes []*corev1.Node, existingNodeClaims []*karpenterv1.NodeClaim) (bool, error) {
+	targetNodeClaimCount := c.GetNumNodeClaimsNeeded(ctx, wObj, readyNodes)
 
 	readyCount := 0
 	for _, claim := range existingNodeClaims {

@@ -24,11 +24,10 @@ import (
 	"github.com/stretchr/testify/mock"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/kaito-project/kaito/api/v1beta1"
+	"github.com/kaito-project/kaito/pkg/featuregates"
 	"github.com/kaito-project/kaito/pkg/sku"
 	"github.com/kaito-project/kaito/pkg/utils"
 	"github.com/kaito-project/kaito/pkg/utils/consts"
@@ -63,6 +62,10 @@ func TestGeneratePresetInference(t *testing.T) {
 			modelName: "test-model",
 			callMocks: func(c *test.MockClient) {
 				c.On("Get", mock.IsType(context.TODO()), mock.Anything, mock.IsType(&corev1.ConfigMap{}), mock.Anything).Return(nil)
+				// Mock node get for TryGetGPUConfigFromNode
+				c.On("Get", mock.IsType(context.TODO()), mock.Anything, mock.IsType(&corev1.Node{}), mock.Anything).Return(nil)
+				// Mock node list for BYO node discovery
+				c.On("List", mock.Anything, mock.IsType(&corev1.NodeList{}), mock.Anything).Return(nil)
 			},
 			workload:           "Deployment",
 			expectedModelImage: "test-registry/kaito-test-model:1.0.0",
@@ -78,6 +81,10 @@ func TestGeneratePresetInference(t *testing.T) {
 			modelName: "test-no-tensor-parallel-model",
 			callMocks: func(c *test.MockClient) {
 				c.On("Get", mock.IsType(context.TODO()), mock.Anything, mock.IsType(&corev1.ConfigMap{}), mock.Anything).Return(nil)
+				// Mock node get for TryGetGPUConfigFromNode
+				c.On("Get", mock.IsType(context.TODO()), mock.Anything, mock.IsType(&corev1.Node{}), mock.Anything).Return(nil)
+				// Mock node list for BYO node discovery
+				c.On("List", mock.Anything, mock.IsType(&corev1.NodeList{}), mock.Anything).Return(nil)
 			},
 			workload:           "Deployment",
 			expectedModelImage: "test-registry/kaito-test-no-tensor-parallel-model:1.0.0",
@@ -93,6 +100,10 @@ func TestGeneratePresetInference(t *testing.T) {
 			modelName: "test-no-lora-support-model",
 			callMocks: func(c *test.MockClient) {
 				c.On("Get", mock.IsType(context.TODO()), mock.Anything, mock.IsType(&corev1.ConfigMap{}), mock.Anything).Return(nil)
+				// Mock node get for TryGetGPUConfigFromNode
+				c.On("Get", mock.IsType(context.TODO()), mock.Anything, mock.IsType(&corev1.Node{}), mock.Anything).Return(nil)
+				// Mock node list for BYO node discovery
+				c.On("List", mock.Anything, mock.IsType(&corev1.NodeList{}), mock.Anything).Return(nil)
 			},
 			workload:           "Deployment",
 			expectedModelImage: "test-registry/kaito-test-no-lora-support-model:1.0.0",
@@ -108,6 +119,10 @@ func TestGeneratePresetInference(t *testing.T) {
 			modelName: "test-model",
 			callMocks: func(c *test.MockClient) {
 				c.On("Get", mock.IsType(context.TODO()), mock.Anything, mock.IsType(&corev1.ConfigMap{}), mock.Anything).Return(nil)
+				// Mock node get for TryGetGPUConfigFromNode
+				c.On("Get", mock.IsType(context.TODO()), mock.Anything, mock.IsType(&corev1.Node{}), mock.Anything).Return(nil)
+				// Mock node list for BYO node discovery
+				c.On("List", mock.Anything, mock.IsType(&corev1.NodeList{}), mock.Anything).Return(nil)
 			},
 			workload:           "Deployment",
 			expectedModelImage: "test-registry/kaito-test-model:1.0.0",
@@ -126,6 +141,10 @@ func TestGeneratePresetInference(t *testing.T) {
 			modelName: "test-model",
 			callMocks: func(c *test.MockClient) {
 				c.On("Get", mock.IsType(context.TODO()), mock.Anything, mock.IsType(&corev1.ConfigMap{}), mock.Anything).Return(nil)
+				// Mock node get for TryGetGPUConfigFromNode
+				c.On("Get", mock.IsType(context.TODO()), mock.Anything, mock.IsType(&corev1.Node{}), mock.Anything).Return(nil)
+				// Mock node list for BYO node discovery
+				c.On("List", mock.Anything, mock.IsType(&corev1.NodeList{}), mock.Anything).Return(nil)
 			},
 			workload:           "Deployment",
 			expectedModelImage: "test-registry/kaito-test-model:1.0.0",
@@ -141,6 +160,10 @@ func TestGeneratePresetInference(t *testing.T) {
 			modelName: "test-model",
 			callMocks: func(c *test.MockClient) {
 				c.On("Get", mock.IsType(context.TODO()), mock.Anything, mock.IsType(&corev1.ConfigMap{}), mock.Anything).Return(nil)
+				// Mock node get for TryGetGPUConfigFromNode
+				c.On("Get", mock.IsType(context.TODO()), mock.Anything, mock.IsType(&corev1.Node{}), mock.Anything).Return(nil)
+				// Mock node list for BYO node discovery
+				c.On("List", mock.Anything, mock.IsType(&corev1.NodeList{}), mock.Anything).Return(nil)
 			},
 			workload:           "Deployment",
 			expectedModelImage: "test-registry/kaito-test-model:1.0.0",
@@ -159,6 +182,10 @@ func TestGeneratePresetInference(t *testing.T) {
 			modelName: "test-model-download-a100",
 			callMocks: func(c *test.MockClient) {
 				c.On("Get", mock.IsType(context.TODO()), mock.Anything, mock.IsType(&corev1.ConfigMap{}), mock.Anything).Return(nil)
+				// Mock node get for TryGetGPUConfigFromNode
+				c.On("Get", mock.IsType(context.TODO()), mock.Anything, mock.IsType(&corev1.Node{}), mock.Anything).Return(nil)
+				// Mock node list for BYO node discovery
+				c.On("List", mock.Anything, mock.IsType(&corev1.NodeList{}), mock.Anything).Return(nil)
 			},
 			workload:    "Deployment",
 			expectedCmd: `/bin/sh -c python3 /workspace/vllm/inference_api.py --gpu-memory-utilization=0.84 --max-model-len=2048 --tensor-parallel-size=2 --model=test-repo/test-model-a100 --code-revision=test-revision --download-dir=/workspace/weights --kaito-config-file=/mnt/config/inference_config.yaml`,
@@ -182,6 +209,10 @@ func TestGeneratePresetInference(t *testing.T) {
 			callMocks: func(c *test.MockClient) {
 				c.On("Get", mock.IsType(context.TODO()), mock.Anything, mock.IsType(&corev1.ConfigMap{}), mock.Anything).Return(nil)
 				c.On("Get", mock.IsType(context.TODO()), mock.Anything, mock.IsType(&corev1.Service{}), mock.Anything).Return(nil)
+				// Mock node get for TryGetGPUConfigFromNode
+				c.On("Get", mock.Anything, mock.Anything, mock.IsType(&corev1.Node{}), mock.Anything).Return(nil)
+				// Mock node list for BYO node discovery
+				c.On("List", mock.Anything, mock.IsType(&corev1.NodeList{}), mock.Anything).Return(nil)
 			},
 			workload:    "StatefulSet",
 			expectedCmd: `/bin/sh -c if [ "${POD_INDEX}" = "0" ]; then  --ray_cluster_size=3 --ray_port=6379; python3 /workspace/vllm/inference_api.py --model=test-repo/test-model --code-revision=test-revision --download-dir=/workspace/weights --gpu-memory-utilization=0.84 --max-model-len=2048 --kaito-config-file=/mnt/config/inference_config.yaml --pipeline-parallel-size=3 --tensor-parallel-size=2; else  --ray_address=testWorkspace-0.testWorkspace-headless.kaito.svc.cluster.local --ray_port=6379; fi`,
@@ -214,6 +245,10 @@ func TestGeneratePresetInference(t *testing.T) {
 			callMocks: func(c *test.MockClient) {
 				c.On("Get", mock.IsType(context.TODO()), mock.Anything, mock.IsType(&corev1.ConfigMap{}), mock.Anything).Return(nil)
 				c.On("Get", mock.IsType(context.TODO()), mock.Anything, mock.IsType(&corev1.Service{}), mock.Anything).Return(nil)
+				// Mock node get for TryGetGPUConfigFromNode
+				c.On("Get", mock.Anything, mock.Anything, mock.IsType(&corev1.Node{}), mock.Anything).Return(nil)
+				// Mock node list for BYO node discovery
+				c.On("List", mock.Anything, mock.IsType(&corev1.NodeList{}), mock.Anything).Return(nil)
 			},
 			workload:    "StatefulSet",
 			expectedCmd: `/bin/sh -c if [ "${POD_INDEX}" = "0" ]; then  --ray_cluster_size=3 --ray_port=6379; python3 /workspace/vllm/inference_api.py --model=test-repo/test-model --code-revision=test-revision --download-dir=/workspace/weights --gpu-memory-utilization=0.84 --max-model-len=2048 --kaito-config-file=/mnt/config/inference_config.yaml --pipeline-parallel-size=3 --tensor-parallel-size=2; else  --ray_address=testWorkspace-0.testWorkspace-headless.kaito.svc.cluster.local --ray_port=6379; fi`,
@@ -243,6 +278,10 @@ func TestGeneratePresetInference(t *testing.T) {
 			modelName: "test-model-download",
 			callMocks: func(c *test.MockClient) {
 				c.On("Get", mock.IsType(context.TODO()), mock.Anything, mock.IsType(&corev1.ConfigMap{}), mock.Anything).Return(nil)
+				// Mock node get for TryGetGPUConfigFromNode
+				c.On("Get", mock.IsType(context.TODO()), mock.Anything, mock.IsType(&corev1.Node{}), mock.Anything).Return(nil)
+				// Mock node list for BYO node discovery
+				c.On("List", mock.Anything, mock.IsType(&corev1.NodeList{}), mock.Anything).Return(nil)
 			},
 			workload:    "Deployment",
 			expectedCmd: "/bin/sh -c accelerate launch /workspace/tfs/inference_api.py --pretrained_model_name_or_path=test-repo/test-model --revision=test-revision",
@@ -272,6 +311,9 @@ func TestGeneratePresetInference(t *testing.T) {
 			workspace := tc.workspace
 			//nolint:staticcheck //SA1019: deprecate Resource.Count field
 			workspace.Resource.Count = &tc.nodeCount
+
+			// Set WorkerNodes to avoid node listing in tests (for BYO scenarios)
+			workspace.Status.WorkerNodes = []string{"test-node-1"}
 
 			// Set the Status.Inference.TargetNodeCount for proper node count calculation
 			if workspace.Inference != nil {
@@ -493,10 +535,12 @@ func TestGetGPUConfig(t *testing.T) {
 	test.RegisterTestModel()
 
 	testcases := map[string]struct {
-		workspace      *v1beta1.Workspace
-		model          string
-		callMocks      func(c *test.MockClient)
-		expectedConfig sku.GPUConfig
+		workspace                   *v1beta1.Workspace
+		model                       string
+		callMocks                   func(c *test.MockClient)
+		disableNodeAutoProvisioning bool
+		expectedConfig              *sku.GPUConfig
+		expectedErr                 string
 	}{
 		"SKU path - get config from instanceType": {
 			workspace: &v1beta1.Workspace{
@@ -510,20 +554,26 @@ func TestGetGPUConfig(t *testing.T) {
 			callMocks: func(c *test.MockClient) {
 				// No need for mock expectations here
 			},
-			expectedConfig: sku.GPUConfig{
+			disableNodeAutoProvisioning: false,
+			expectedConfig: &sku.GPUConfig{
 				SKU:             "Standard_NC24ads_A100_v4",
 				GPUCount:        1,
 				GPUMemGiB:       80,
 				GPUModel:        "NVIDIA A100",
 				NVMeDiskEnabled: true,
 			},
+			expectedErr: "",
 		},
 		"Node status path - get config from node": {
 			workspace: &v1beta1.Workspace{
 				Resource: v1beta1.ResourceSpec{
 					InstanceType:   "unknown-instance-type",
 					PreferredNodes: []string{},
-					LabelSelector:  &metav1.LabelSelector{},
+					LabelSelector: &metav1.LabelSelector{
+						MatchLabels: map[string]string{
+							"test-label-key": "test-label-value",
+						},
+					},
 				},
 				Status: v1beta1.WorkspaceStatus{
 					WorkerNodes: []string{"gpu-node-1"},
@@ -534,28 +584,40 @@ func TestGetGPUConfig(t *testing.T) {
 				node := &corev1.Node{
 					ObjectMeta: metav1.ObjectMeta{
 						Name: "gpu-node-1",
+						// TODO: add nvidia.com labels for GPU product, count, and memory
+						Labels: map[string]string{
+							// TODO: use the variable names for nvidia.com labels instead of the string literals.
+							consts.NvidiaGPUProduct: "NVIDIA-A10-24Q",
+							consts.NvidiaGPUCount:   "2",
+							consts.NvidiaGPUMemory:  "24512", // in MiB
+							"test-label-key":        "test-label-value",
+						},
 					},
 					Status: corev1.NodeStatus{
-						Capacity: corev1.ResourceList{
-							consts.NvidiaGPU: *resource.NewQuantity(2, resource.DecimalSI),
+						Conditions: []corev1.NodeCondition{
+							{
+								Type:   corev1.NodeReady,
+								Status: corev1.ConditionTrue,
+							},
 						},
 					},
 				}
-				c.On("Get", mock.Anything, mock.MatchedBy(func(key client.ObjectKey) bool {
-					return key.Name == "gpu-node-1"
-				}), mock.IsType(&corev1.Node{}), mock.Anything).
+
+				c.On("List", mock.Anything, mock.IsType(&corev1.NodeList{}), mock.Anything).
 					Run(func(args mock.Arguments) {
-						nodeArg := args.Get(2).(*corev1.Node)
-						*nodeArg = *node
+						nodeListArg := args.Get(1).(*corev1.NodeList)
+						nodeListArg.Items = []corev1.Node{*node}
 					}).Return(nil)
 			},
-			expectedConfig: sku.GPUConfig{
+			disableNodeAutoProvisioning: true,
+			expectedConfig: &sku.GPUConfig{
 				SKU:      "unknown",
 				GPUCount: 2,
-				GPUModel: "unknown",
+				GPUModel: "NVIDIA-A10-24Q",
 			},
+			expectedErr: "",
 		},
-		"Fallback path when node fetch fails": {
+		"Return error when node list fails": {
 			workspace: &v1beta1.Workspace{
 				Resource: v1beta1.ResourceSpec{
 					InstanceType:   "unknown-instance-type",
@@ -568,20 +630,17 @@ func TestGetGPUConfig(t *testing.T) {
 			},
 			model: "test-model",
 			callMocks: func(c *test.MockClient) {
-				c.On("Get", mock.Anything, mock.MatchedBy(func(key client.ObjectKey) bool {
-					return key.Name == "gpu-node-1"
-				}), mock.IsType(&corev1.Node{}), mock.Anything).Return(fmt.Errorf("no nodes found"))
+				c.On("List", mock.Anything, mock.IsType(&corev1.NodeList{}), mock.Anything).Return(fmt.Errorf("internal server error"))
 			},
-			expectedConfig: sku.GPUConfig{
-				GPUCount: 1, // From test-model's GPUCountRequirement
-			},
+			disableNodeAutoProvisioning: true,
+			expectedConfig:              nil,
+			expectedErr:                 "failed to list ready nodes: internal server error",
 		},
-		"PreferredNodes path - bypass SKU path": {
+		"Return error when SKU look up fails": {
 			workspace: &v1beta1.Workspace{
 				Resource: v1beta1.ResourceSpec{
-					InstanceType:   "Standard_NC24ads_A100_v4",
-					PreferredNodes: []string{"preferred-node"},
-					LabelSelector:  &metav1.LabelSelector{},
+					InstanceType:  "unknown-instance-type",
+					LabelSelector: &metav1.LabelSelector{},
 				},
 				Status: v1beta1.WorkspaceStatus{
 					WorkerNodes: []string{"gpu-node-1"},
@@ -589,34 +648,21 @@ func TestGetGPUConfig(t *testing.T) {
 			},
 			model: "test-model",
 			callMocks: func(c *test.MockClient) {
-				node := &corev1.Node{
-					ObjectMeta: metav1.ObjectMeta{
-						Name: "gpu-node-1",
-					},
-					Status: corev1.NodeStatus{
-						Capacity: corev1.ResourceList{
-							consts.NvidiaGPU: *resource.NewQuantity(2, resource.DecimalSI),
-						},
-					},
-				}
-				c.On("Get", mock.Anything, mock.MatchedBy(func(key client.ObjectKey) bool {
-					return key.Name == "gpu-node-1"
-				}), mock.IsType(&corev1.Node{}), mock.Anything).
-					Run(func(args mock.Arguments) {
-						nodeArg := args.Get(2).(*corev1.Node)
-						*nodeArg = *node
-					}).Return(nil)
 			},
-			expectedConfig: sku.GPUConfig{
-				SKU:      "unknown",
-				GPUCount: 2,
-				GPUModel: "unknown",
-			},
+			disableNodeAutoProvisioning: false,
+			expectedConfig:              nil,
+			expectedErr:                 "invalid value: Unsupported SKU 'unknown-instance-type' for cloud provider: sku",
 		},
 	}
 
 	for k, tc := range testcases {
 		t.Run(k, func(t *testing.T) {
+			originalFeatureGate := featuregates.FeatureGates[consts.FeatureFlagDisableNodeAutoProvisioning]
+			featuregates.FeatureGates[consts.FeatureFlagDisableNodeAutoProvisioning] = tc.disableNodeAutoProvisioning
+			defer func() {
+				featuregates.FeatureGates[consts.FeatureFlagDisableNodeAutoProvisioning] = originalFeatureGate
+			}()
+
 			t.Setenv("CLOUD_PROVIDER", consts.AzureCloudName)
 
 			mockClient := test.NewClient()
@@ -631,7 +677,23 @@ func TestGetGPUConfig(t *testing.T) {
 				KubeClient: mockClient,
 			}
 
-			config := getGPUConfig(gctx)
+			config, err := getGPUConfig(gctx)
+			if tc.expectedErr == "" {
+				if err != nil {
+					t.Errorf("Expected no error but got error: '%v'", err)
+					return
+				}
+			} else {
+				if err == nil {
+					t.Errorf("Expected error '%v' but got no error", tc.expectedErr)
+				} else {
+					if err.Error() != tc.expectedErr {
+						t.Errorf("Expected error to be '%v', got '%v'", tc.expectedErr, err)
+					}
+				}
+
+				return
+			}
 
 			// Check each field against expected values
 			if tc.expectedConfig.SKU != "" && config.SKU != tc.expectedConfig.SKU {

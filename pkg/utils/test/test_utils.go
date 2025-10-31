@@ -141,7 +141,8 @@ var (
 		},
 		Spec: &v1alpha1.RAGEngineSpec{
 			Compute: &v1alpha1.ResourceSpec{
-				Count: &gpuNodeCount,
+				Count:        &gpuNodeCount,
+				InstanceType: "Standard_NC12s_v3",
 				LabelSelector: &metav1.LabelSelector{
 					MatchLabels: map[string]string{
 						corev1.LabelInstanceTypeStable: "Standard_NC12s_v3",

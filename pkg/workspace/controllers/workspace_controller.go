@@ -144,6 +144,67 @@ func (c *WorkspaceReconciler) ensureFinalizer(ctx context.Context, workspaceObj 
 	return nil
 }
 
+func (c *WorkspaceReconciler) reconcileNodes(ctx context.Context, wObj *kaitov1beta1.Workspace) (*reconcile.Result, error) {
+	defer func() {
+		if err := c.nodeResourceManager.SetResourceReadyConditionByStatus(ctx, wObj); err != nil {
+			klog.ErrorS(err, "failed to update resource status", "workspace", klog.KObj(wObj))
+		}
+	}()
+
+	nodeList, err := resources.ListNodes(ctx, c.Client, wObj.Resource.LabelSelector.MatchLabels)
+	if err != nil {
+		return &reconcile.Result{}, err
+	}
+	matchingNodes := []*corev1.Node{}
+	for i := range nodeList.Items {
+		node := &nodeList.Items[i]
+		matchingNodes = append(matchingNodes, node)
+	}
+
+	readyNodes, err := resources.GetReadyNodes(ctx, c.Client, wObj)
+	if err != nil {
+		return &reconcile.Result{}, fmt.Errorf("failed to list ready nodes: %w", err)
+	}
+
+	existingNodeClaims := []*karpenterv1.NodeClaim{}
+	if !featuregates.FeatureGates[consts.FeatureFlagDisableNodeAutoProvisioning] {
+		// diff node claims
+		var numNodeClaimsToCreate int
+		var err error
+		numNodeClaimsToCreate, existingNodeClaims, err = c.nodeClaimManager.CheckNodeClaims(ctx, wObj, readyNodes)
+		klog.Info("NodeClaims to create", "count", numNodeClaimsToCreate, "workspace", klog.KObj(wObj))
+		if err != nil {
+			return &reconcile.Result{}, err
+		}
+
+		// create nodeclaims
+		if err := c.nodeClaimManager.CreateUpNodeClaims(ctx, wObj, numNodeClaimsToCreate); err != nil {
+			return &reconcile.Result{}, err
+		}
+
+		// check nodeclaims meet the target count
+		if ready, err := c.nodeClaimManager.EnsureNodeClaimsReady(ctx, wObj, readyNodes, existingNodeClaims); err != nil {
+			return &reconcile.Result{}, err
+		} else if !ready {
+			// Not enough ready nodeclaims, requeue and wait for next reconcile.
+			return &reconcile.Result{}, nil
+		}
+
+		// check node plugins ready
+		if ready, err := c.nodeResourceManager.CheckIfNodePluginsReady(ctx, wObj, existingNodeClaims); err != nil {
+			return &reconcile.Result{}, err
+		} else if !ready {
+			// The node resource changes can not trigger workspace controller reconcile, so we need to requeue reconcile when don't proceed because of node resource not ready.
+			return &reconcile.Result{RequeueAfter: 2 * time.Second}, nil
+		}
+	}
+
+	// Check if selected nodes are ready in both NAP and BYO scenarios.
+	_, err = c.nodeResourceManager.EnsureNodesReady(ctx, wObj, matchingNodes, existingNodeClaims)
+
+	return nil, err
+}
+
 func (c *WorkspaceReconciler) addOrUpdateWorkspace(ctx context.Context, wObj *kaitov1beta1.Workspace) (reconcile.Result, error) {
 	workspaceKey := client.ObjectKeyFromObject(wObj).String()
 	if !c.expectations.SatisfiedExpectations(c.Log, workspaceKey) {
@@ -152,37 +213,11 @@ func (c *WorkspaceReconciler) addOrUpdateWorkspace(ctx context.Context, wObj *ka
 		return reconcile.Result{}, nil
 	}
 
-	// diff node claims
-	addedNodeClaimsCount, existingNodeClaims, readyNodes, err := c.nodeClaimManager.CheckNodeClaims(ctx, wObj)
-	if err != nil {
-		return reconcile.Result{}, err
+	if result, err := c.reconcileNodes(ctx, wObj); err != nil || result != nil {
+		return *result, err
 	}
 
-	// create nodeclaims
-	if err := c.nodeClaimManager.CreateUpNodeClaims(ctx, wObj, addedNodeClaimsCount); err != nil {
-		return reconcile.Result{}, err
-	}
-
-	// check nodeclaims meet the target count
-	if ready, err := c.nodeClaimManager.AreNodeClaimsReady(ctx, wObj, existingNodeClaims); err != nil {
-		return reconcile.Result{}, err
-	} else if !ready {
-		// Not enough ready nodeclaims, requeue and wait for next reconcile
-		return reconcile.Result{}, nil
-	}
-
-	// check node plugins ready
-	if ready, err := c.nodeResourceManager.AreNodePluginsReady(ctx, wObj, existingNodeClaims); err != nil {
-		return reconcile.Result{}, err
-	} else if !ready {
-		// The node resource changes can not trigger workspace controller reconcile, so we need to requeue reconcile when don't proceed because of node resource not ready.
-		return reconcile.Result{RequeueAfter: 2 * time.Second}, nil
-	}
-
-	// update worker nodes in status
-	if err := c.nodeResourceManager.UpdateWorkerNodesInStatus(ctx, wObj, readyNodes); err != nil {
-		return reconcile.Result{}, err
-	}
+	var err error
 
 	if wObj.Tuning != nil {
 		if err = c.applyTuning(ctx, wObj); err != nil {

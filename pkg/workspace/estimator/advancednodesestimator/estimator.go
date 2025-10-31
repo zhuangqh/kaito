@@ -23,6 +23,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	kaitov1beta1 "github.com/kaito-project/kaito/api/v1beta1"
+	"github.com/kaito-project/kaito/pkg/featuregates"
+	"github.com/kaito-project/kaito/pkg/sku"
 	"github.com/kaito-project/kaito/pkg/utils"
 	"github.com/kaito-project/kaito/pkg/utils/consts"
 	"github.com/kaito-project/kaito/pkg/utils/plugin"
@@ -52,12 +54,26 @@ func (c *AdvancedNodesEstimator) EstimateNodeCount(ctx context.Context, workspac
 	presetName := string(workspace.Inference.Preset.Name)
 	model := plugin.KaitoModelRegister.MustGet(presetName)
 
-	gpuConfig, err := utils.GetGPUConfigBySKU(workspace.Resource.InstanceType)
-	if err != nil {
-		return 0, fmt.Errorf("failed to get GPU config for instance type %s: %w", workspace.Resource.InstanceType, err)
-	}
-	if gpuConfig == nil {
-		return 0, fmt.Errorf("GPU config is nil for instance type %s", workspace.Resource.InstanceType)
+	var gpuConfig *sku.GPUConfig
+	var err error
+
+	if featuregates.FeatureGates[consts.FeatureFlagDisableNodeAutoProvisioning] {
+		if readyNodes, err := resources.GetReadyNodes(ctx, client, workspace); err != nil {
+			return 0, fmt.Errorf("failed to list ready nodes: %w", err)
+		} else if len(readyNodes) == 0 {
+			return 0, fmt.Errorf("no ready nodes found, unable to determine GPU configuration")
+		} else {
+			gpuConfig, err = utils.GetGPUConfigFromNodeLabels(readyNodes[0])
+			if err != nil {
+				return 0, fmt.Errorf("failed to get GPU config from existing nodes: %w", err)
+			}
+		}
+	} else {
+		// NAP is enabled - instanceType is required and must be valid
+		gpuConfig, err = utils.GetGPUConfigBySKU(workspace.Resource.InstanceType)
+		if err != nil {
+			return 0, fmt.Errorf("failed to get GPU config for instance type %s: %w", workspace.Resource.InstanceType, err)
+		}
 	}
 
 	// Start with the user-requested node count (default is 1)

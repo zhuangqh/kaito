@@ -29,6 +29,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/kaito-project/kaito/api/v1beta1"
+	"github.com/kaito-project/kaito/pkg/featuregates"
 	pkgmodel "github.com/kaito-project/kaito/pkg/model"
 	"github.com/kaito-project/kaito/pkg/sku"
 	"github.com/kaito-project/kaito/pkg/utils"
@@ -136,13 +137,16 @@ func GeneratePresetInference(ctx context.Context, workspaceObj *v1beta1.Workspac
 		Model:      model,
 	}
 
-	gpuConfig := getGPUConfig(gctx)
+	gpuConfig, err := getGPUConfig(gctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get GPU config: %w", err)
+	}
 
 	// Set the target node count for the inference workload
 	numNodes := int(workspaceObj.Status.TargetNodeCount)
 
 	podOpts := []generator.TypedManifestModifier[generator.WorkspaceGeneratorContext, corev1.PodSpec]{
-		GenerateInferencePodSpec(&gpuConfig, numNodes),
+		GenerateInferencePodSpec(gpuConfig, numNodes),
 		SetModelDownloadInfo,
 		SetAdapterPuller,
 	}
@@ -156,7 +160,7 @@ func GeneratePresetInference(ctx context.Context, workspaceObj *v1beta1.Workspac
 			manifests.GenerateStatefulSetManifest(revisionNum, numNodes),
 		}
 
-		if checkIfNVMeAvailable(ctx, &gpuConfig, kubeClient) {
+		if checkIfNVMeAvailable(ctx, gpuConfig, kubeClient) {
 			ssOpts = append(ssOpts, manifests.AddStatefulSetVolumeClaimTemplates(GenerateModelWeightsCacheVolume(ctx, workspaceObj, model)))
 		} else {
 			podOpts = append(podOpts, SetDefaultModelWeightsVolume)
@@ -184,30 +188,27 @@ func GeneratePresetInference(ctx context.Context, workspaceObj *v1beta1.Workspac
 	}
 }
 
-func getGPUConfig(ctx *generator.WorkspaceGeneratorContext) sku.GPUConfig {
-	var gpuConfig *sku.GPUConfig
-	var err error
-	// 1. try to get GPU config from known sku if instanceType is set
-	//nolint:staticcheck // SA1019
-	if len(ctx.Workspace.Resource.PreferredNodes) == 0 {
-		gpuConfig, _ = utils.GetGPUConfigBySKU(ctx.Workspace.Resource.InstanceType)
-		if gpuConfig != nil {
-			return *gpuConfig
+func getGPUConfig(ctx *generator.WorkspaceGeneratorContext) (*sku.GPUConfig, error) {
+	if featuregates.FeatureGates[consts.FeatureFlagDisableNodeAutoProvisioning] {
+		// NAP is disabled (BYO scenario) - prefer to get GPU config from matching nodes with nvidia.com labels
+		// Only try to find matching nodes if we have a labelSelector and if WorkerNodes is not already populated
+		readyNodes, err := resources.GetReadyNodes(ctx.Ctx, ctx.KubeClient, ctx.Workspace)
+		if err != nil {
+			return nil, fmt.Errorf("failed to list ready nodes: %w", err)
 		}
-	}
+		if len(readyNodes) == 0 {
+			return nil, fmt.Errorf("no ready nodes found matching the workspace's label selector")
+		}
 
-	// 2. try to get GPU config from the node status
-	gpuConfig, err = utils.TryGetGPUConfigFromNode(ctx.Ctx, ctx.KubeClient, ctx.Workspace.Status.WorkerNodes)
-	if err == nil {
-		return *gpuConfig
-	}
+		return utils.GetGPUConfigFromNodeLabels(readyNodes[0])
+	} else {
+		// NAP is enabled - try to get GPU config from known SKU
+		gpuConfig, err := utils.GetGPUConfigBySKU(ctx.Workspace.Resource.InstanceType)
+		if err != nil {
+			return nil, err
+		}
 
-	// 3. if both above methods fail, use the default GPU count requirement from the model
-	//    FIXME: assume gpu nodes are provided here. cpu inference should not go through this path.
-	defaultNumGPU := resource.MustParse(ctx.Model.GetInferenceParameters().GPUCountRequirement)
-	skuNumGPUs := int(defaultNumGPU.Value())
-	return sku.GPUConfig{
-		GPUCount: skuNumGPUs,
+		return gpuConfig, nil
 	}
 }
 
