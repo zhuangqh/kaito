@@ -7,6 +7,13 @@ GPU_PROVISIONER_VERSION ?= 0.3.7
 RAGENGINE_IMG_NAME ?= ragengine
 IMG_TAG ?= $(subst v,,$(VERSION))
 
+# injection variables
+INJECTION_ROOT := github.com/kaito-project/kaito/pkg/version
+BUILD_DATE := $(shell date -u +%Y-%m-%dT%H:%M:%SZ)
+GIT_VERSION := $(shell git describe --tags --always --dirty)
+LDFLAGS := -X '$(INJECTION_ROOT).Version=$(GIT_VERSION)' \
+		   -X '$(INJECTION_ROOT).BuildDate=$(BUILD_DATE)'
+
 ROOT_DIR := $(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))
 BIN_DIR := $(abspath $(ROOT_DIR)/bin)
 
@@ -296,6 +303,8 @@ docker-build-workspace: docker-buildx ## Build Docker image for workspace.
 		--file ./docker/workspace/Dockerfile \
 		--output=$(OUTPUT_TYPE) \
 		--platform="linux/$(ARCH)" \
+		--build-arg VERSION=$(GIT_VERSION) \
+		--build-arg BUILD_DATE=$(BUILD_DATE) \
 		--pull \
 		$(BUILD_FLAGS) \
 		--tag $(REGISTRY)/$(IMG_NAME):$(IMG_TAG) .
@@ -306,6 +315,8 @@ docker-build-ragengine: docker-buildx ## Build Docker image for RAG Engine.
 		--file ./docker/ragengine/Dockerfile \
 		--output=$(OUTPUT_TYPE) \
 		--platform="linux/$(ARCH)" \
+		--build-arg VERSION=$(GIT_VERSION) \
+		--build-arg BUILD_DATE=$(BUILD_DATE) \
 		--pull \
 		$(BUILD_FLAGS) \
 		--tag $(REGISTRY)/$(RAGENGINE_IMAGE_NAME):$(IMG_TAG) .
@@ -502,13 +513,6 @@ aws-karpenter-helm: ## Install AWS Karpenter Helm chart and set AWS env vars and
 ## --------------------------------------
 
 ##@ Build
-
-# injection variables
-INJECTION_ROOT := github.com/kaito-project/kaito/pkg/version
-BUILD_DATE := $(shell date -u +%Y-%m-%dT%H:%M:%SZ)
-GIT_VERSION := $(shell git describe --tags --always --dirty)
-LDFLAGS := -X '$(INJECTION_ROOT).Version=$(GIT_VERSION)' \
-		   -X '$(INJECTION_ROOT).BuildDate=$(BUILD_DATE)'
 
 .PHONY: build-workspace
 build-workspace: manifests generate fmt vet ## Build manager binary.

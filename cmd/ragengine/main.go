@@ -107,7 +107,7 @@ func main() {
 		fmt.Println(version.VersionInfo())
 		os.Exit(0)
 	}
-	klog.Info("version", version.VersionInfo())
+	klog.Info("version: ", version.VersionInfo())
 
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
 

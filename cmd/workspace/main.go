@@ -117,7 +117,7 @@ func main() {
 		fmt.Println(version.VersionInfo())
 		os.Exit(0)
 	}
-	klog.Info("version", version.VersionInfo())
+	klog.Info("version: ", version.VersionInfo())
 
 	if err := featuregates.ParseAndValidateFeatureGates(featureGates); err != nil {
 		klog.ErrorS(err, "unable to set `feature-gates` flag")
