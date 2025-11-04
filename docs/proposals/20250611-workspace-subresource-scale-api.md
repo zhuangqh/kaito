@@ -8,7 +8,7 @@ reviewers:
   - "@zhuangqh"
 creation-date: 2025-06-11
 last-updated: 2025-06-11
-status: provisional
+status: abandoned
 see-also:
 ---
 
