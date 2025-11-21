@@ -20,10 +20,6 @@ jobs:
     runs-on: [ "self-hosted" ]
     environment: unit-tests
     steps:
-      - name: Use custom pip cache
-        run: |
-          mkdir -p /datadrive/pip-cache
-          echo "PIP_CACHE_DIR=/datadrive/pip-cache" >> $GITHUB_ENV
       - name: Harden Runner
         uses: step-security/harden-runner@f4a75cfd619ee5ce8d5b864b0d183aff3c69b55a # v2.13.1
         with:
@@ -41,6 +37,12 @@ jobs:
         uses: actions/setup-go@8e57b58e57be52ac95949151e2777ffda8501267 # v5.4.0
         with:
           go-version: ${{ env.GO_VERSION  }}
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: 3.11
+          cache: pip
 
       - name: Generate APIs
         run: |
