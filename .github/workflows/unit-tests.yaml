@@ -17,7 +17,7 @@ env:
 
 jobs:
   unit-tests:
-    runs-on: ubuntu-latest
+    runs-on: [ "self-hosted" ]
     environment: unit-tests
     steps:
       - name: Harden Runner
@@ -37,6 +37,12 @@ jobs:
         uses: actions/setup-go@8e57b58e57be52ac95949151e2777ffda8501267 # v5.4.0
         with:
           go-version: ${{ env.GO_VERSION  }}
+
+      - name: Set up Python
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+        with:
+          python-version: '3.12'
+          cache: pip
 
       - name: Generate APIs
         run: |
