@@ -17,7 +17,7 @@ env:
 
 jobs:
   unit-tests:
-    runs-on: ubuntu-latest
+    runs-on: [ "self-hosted" ]
     environment: unit-tests
     steps:
       - name: Harden Runner
