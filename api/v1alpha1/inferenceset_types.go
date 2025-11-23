@@ -28,6 +28,7 @@ type InferenceSetResourceSpec struct {
 
 // InferenceSetTemplate defines the template for creating InferenceSet instances.
 type InferenceSetTemplate struct {
+	// +optional
 	Resource  InferenceSetResourceSpec   `json:"resource"`
 	Inference kaitov1beta1.InferenceSpec `json:"inference"`
 }

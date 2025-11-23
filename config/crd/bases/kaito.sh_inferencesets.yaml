@@ -222,7 +222,6 @@ spec:
                     type: object
                 required:
                 - inference
-                - resource
                 type: object
               updateStrategy:
                 default:
