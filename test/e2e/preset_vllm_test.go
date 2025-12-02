@@ -70,7 +70,6 @@ var _ = Describe("Workspace Preset on vllm runtime", func() {
 		validateWorkspaceReadiness(workspaceObj)
 		validateModelsEndpoint(workspaceObj)
 		validateCompletionsEndpoint(workspaceObj)
-		validateGatewayAPIInferenceExtensionResources(workspaceObj)
 	})
 
 	It("should create a single-node llama-3.1-8b-instruct workspace with preset public mode successfully", utils.GinkgoLabelFastCheck, func() {
@@ -93,7 +92,6 @@ var _ = Describe("Workspace Preset on vllm runtime", func() {
 		validateWorkspaceReadiness(workspaceObj)
 		validateModelsEndpoint(workspaceObj)
 		validateCompletionsEndpoint(workspaceObj)
-		validateGatewayAPIInferenceExtensionResources(workspaceObj)
 	})
 
 	It("should create a multi-node llama-3.1-8b-instruct workspace with preset public mode successfully", utils.GinkgoLabelFastCheck, func() {
@@ -119,7 +117,6 @@ var _ = Describe("Workspace Preset on vllm runtime", func() {
 		validateWorkspaceReadiness(workspaceObj)
 		validateModelsEndpoint(workspaceObj)
 		validateCompletionsEndpoint(workspaceObj)
-		validateGatewayAPIInferenceExtensionResources(workspaceObj)
 	})
 
 	It("should create a deepseek-distilled-qwen-14b workspace with preset public mode successfully", utils.GinkgoLabelA100Required, func() {
@@ -142,7 +139,6 @@ var _ = Describe("Workspace Preset on vllm runtime", func() {
 		validateWorkspaceReadiness(workspaceObj)
 		validateModelsEndpoint(workspaceObj)
 		validateCompletionsEndpoint(workspaceObj)
-		validateGatewayAPIInferenceExtensionResources(workspaceObj)
 	})
 
 	It("should create a falcon workspace with preset public mode successfully", func() {
@@ -165,7 +161,6 @@ var _ = Describe("Workspace Preset on vllm runtime", func() {
 		validateWorkspaceReadiness(workspaceObj)
 		validateModelsEndpoint(workspaceObj)
 		validateCompletionsEndpoint(workspaceObj)
-		validateGatewayAPIInferenceExtensionResources(workspaceObj)
 	})
 
 	It("should create a mistral workspace with preset public mode successfully", func() {
@@ -188,7 +183,6 @@ var _ = Describe("Workspace Preset on vllm runtime", func() {
 		validateWorkspaceReadiness(workspaceObj)
 		validateModelsEndpoint(workspaceObj)
 		validateCompletionsEndpoint(workspaceObj)
-		validateGatewayAPIInferenceExtensionResources(workspaceObj)
 	})
 
 	It("should create a Phi-2 workspace with preset public mode successfully", func() {
@@ -211,7 +205,6 @@ var _ = Describe("Workspace Preset on vllm runtime", func() {
 		validateWorkspaceReadiness(workspaceObj)
 		validateModelsEndpoint(workspaceObj)
 		validateCompletionsEndpoint(workspaceObj)
-		validateGatewayAPIInferenceExtensionResources(workspaceObj)
 	})
 
 	It("should create a Phi-2 InferenceSet with preset public mode successfully", utils.GinkgoLabelFastCheck, func() {
@@ -222,6 +215,7 @@ var _ = Describe("Workspace Preset on vllm runtime", func() {
 
 		validateInferenceSetStatus(inferenceSetObj)
 		validateInferenceSetReplicas(inferenceSetObj, int32(numOfReplicas), false)
+		validateGatewayAPIInferenceExtensionResources(inferenceSetObj)
 	})
 
 	It("should create a Phi-3-mini-128k-instruct workspace with preset public mode successfully", func() {
@@ -244,7 +238,6 @@ var _ = Describe("Workspace Preset on vllm runtime", func() {
 		validateWorkspaceReadiness(workspaceObj)
 		validateModelsEndpoint(workspaceObj)
 		validateCompletionsEndpoint(workspaceObj)
-		validateGatewayAPIInferenceExtensionResources(workspaceObj)
 	})
 
 	It("should create a qwen2.5 coder workspace with preset public mode and 2 gpu successfully", func() {
@@ -268,7 +261,6 @@ var _ = Describe("Workspace Preset on vllm runtime", func() {
 		validateWorkspaceReadiness(workspaceObj)
 		validateModelsEndpoint(workspaceObj)
 		validateCompletionsEndpoint(workspaceObj)
-		validateGatewayAPIInferenceExtensionResources(workspaceObj)
 	})
 
 	It("should create a phi4 workspace with adapter successfully", utils.GinkgoLabelA100Required, func() {
@@ -301,7 +293,6 @@ var _ = Describe("Workspace Preset on vllm runtime", func() {
 		validateInitContainers(workspaceObj, expectedInitContainers)
 
 		validateAdapterLoadedInVLLM(workspaceObj, phi4AdapterName)
-		validateGatewayAPIInferenceExtensionResources(workspaceObj)
 	})
 
 	It("should create a llama-3.3-70b-instruct workspace with preset public mode successfully", utils.GinkgoLabelA100Required, func() {
@@ -326,7 +317,6 @@ var _ = Describe("Workspace Preset on vllm runtime", func() {
 		validateWorkspaceReadiness(workspaceObj)
 		validateModelsEndpoint(workspaceObj)
 		validateCompletionsEndpoint(workspaceObj)
-		validateGatewayAPIInferenceExtensionResources(workspaceObj)
 	})
 
 	It("should create a gemma-3-4b-instruct workspace with preset public mode successfully", utils.GinkgoLabelFastCheck, func() {
@@ -349,7 +339,6 @@ var _ = Describe("Workspace Preset on vllm runtime", func() {
 		validateWorkspaceReadiness(workspaceObj)
 		validateModelsEndpoint(workspaceObj)
 		validateCompletionsEndpoint(workspaceObj)
-		validateGatewayAPIInferenceExtensionResources(workspaceObj)
 	})
 
 	It("should create a gemma-3-27b-instruct workspace with preset public mode successfully", utils.GinkgoLabelA100Required, func() {
@@ -372,7 +361,6 @@ var _ = Describe("Workspace Preset on vllm runtime", func() {
 		validateWorkspaceReadiness(workspaceObj)
 		validateModelsEndpoint(workspaceObj)
 		validateCompletionsEndpoint(workspaceObj)
-		validateGatewayAPIInferenceExtensionResources(workspaceObj)
 	})
 
 	It("should create a gpt-oss-20b workspace with preset public mode successfully", utils.GinkgoLabelFastCheck, func() {
@@ -395,7 +383,6 @@ var _ = Describe("Workspace Preset on vllm runtime", func() {
 		validateWorkspaceReadiness(workspaceObj)
 		validateModelsEndpoint(workspaceObj)
 		validateCompletionsEndpoint(workspaceObj)
-		validateGatewayAPIInferenceExtensionResources(workspaceObj)
 	})
 
 	It("should create a gpt-oss-120b workspace with preset public mode successfully", utils.GinkgoLabelA100Required, func() {
@@ -418,7 +405,6 @@ var _ = Describe("Workspace Preset on vllm runtime", func() {
 		validateWorkspaceReadiness(workspaceObj)
 		validateModelsEndpoint(workspaceObj)
 		validateCompletionsEndpoint(workspaceObj)
-		validateGatewayAPIInferenceExtensionResources(workspaceObj)
 	})
 })
 
@@ -647,9 +633,9 @@ func createGPTOss120BWorkspaceWithPresetPublicModeAndVLLM(numOfNode int) *kaitov
 	return workspaceObj
 }
 
-func validateGatewayAPIInferenceExtensionResources(workspaceObj *kaitov1beta1.Workspace) {
+func validateGatewayAPIInferenceExtensionResources(iObj *kaitov1alpha1.InferenceSet) {
 	// Only validate if the Inference Preset is set
-	if workspaceObj.Inference.Preset == nil {
+	if iObj.Spec.Template.Inference.Preset == nil {
 		return
 	}
 
@@ -657,8 +643,8 @@ func validateGatewayAPIInferenceExtensionResources(workspaceObj *kaitov1beta1.Wo
 		Eventually(func() bool {
 			ociRepository := &sourcev1.OCIRepository{}
 			err := utils.TestingCluster.KubeClient.Get(ctx, client.ObjectKey{
-				Namespace: workspaceObj.Namespace,
-				Name:      kaitoutils.InferencePoolName(workspaceObj.Name),
+				Namespace: iObj.Namespace,
+				Name:      kaitoutils.InferencePoolName(iObj.Name),
 			}, ociRepository, &client.GetOptions{})
 			if err != nil {
 				return false
@@ -676,8 +662,8 @@ func validateGatewayAPIInferenceExtensionResources(workspaceObj *kaitov1beta1.Wo
 		Eventually(func() bool {
 			helmRelease := &helmv2.HelmRelease{}
 			err := utils.TestingCluster.KubeClient.Get(ctx, client.ObjectKey{
-				Namespace: workspaceObj.Namespace,
-				Name:      kaitoutils.InferencePoolName(workspaceObj.Name),
+				Namespace: iObj.Namespace,
+				Name:      kaitoutils.InferencePoolName(iObj.Name),
 			}, helmRelease, &client.GetOptions{})
 			if err != nil {
 				return false
