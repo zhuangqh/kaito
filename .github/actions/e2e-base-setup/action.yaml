@@ -98,7 +98,10 @@ runs:
     - name: Create ACR
       shell: bash
       run: |
-        make create-acr
+          az acr create --name "$AZURE_ACR_NAME" --resource-group "$AZURE_RESOURCE_GROUP" --sku Standard --admin-enabled -o none
+          az acr login  --name "$AZURE_ACR_NAME"
+          # Enable anonymous pull and public network access to make it easier for testing
+          az acr update --name "$AZURE_ACR_NAME" --anonymous-pull-enabled true --allow-public-network true
       env:
         AZURE_RESOURCE_GROUP: ${{ env.CLUSTER_NAME }}
         AZURE_ACR_NAME: ${{ env.CLUSTER_NAME }}
