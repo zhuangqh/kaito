@@ -185,31 +185,9 @@ var _ = Describe("Workspace Preset on vllm runtime", func() {
 		validateCompletionsEndpoint(workspaceObj)
 	})
 
-	It("should create a Phi-2 workspace with preset public mode successfully", func() {
-		numOfNode := 1
-		workspaceObj := createPhi2WorkspaceWithPresetPublicModeAndVLLM(numOfNode)
-
-		defer cleanupResources(workspaceObj)
-		time.Sleep(30 * time.Second)
-
-		validateCreateNode(workspaceObj, numOfNode)
-		validateResourceStatus(workspaceObj)
-
-		time.Sleep(30 * time.Second)
-
-		validateAssociatedService(workspaceObj)
-		validateInferenceConfig(workspaceObj)
-
-		validateInferenceResource(workspaceObj, int32(numOfNode), false)
-
-		validateWorkspaceReadiness(workspaceObj)
-		validateModelsEndpoint(workspaceObj)
-		validateCompletionsEndpoint(workspaceObj)
-	})
-
-	It("should create a Phi-2 InferenceSet with preset public mode successfully", utils.GinkgoLabelFastCheck, func() {
+	It("should create a Gemma InferenceSet with preset public mode successfully", utils.GinkgoLabelFastCheck, func() {
 		numOfReplicas := 2
-		inferenceSetObj := createPhi2InferenceSetWithPresetPublicModeAndVLLM(numOfReplicas)
+		inferenceSetObj := createGemmaInferenceSetWithPresetPublicModeAndVLLM(numOfReplicas)
 		defer cleanupResourcesForInferenceSet(inferenceSetObj)
 		time.Sleep(120 * time.Second)
 
@@ -478,28 +456,14 @@ func createMistralWorkspaceWithPresetPublicModeAndVLLM(numOfNode int) *kaitov1be
 	return workspaceObj
 }
 
-func createPhi2WorkspaceWithPresetPublicModeAndVLLM(numOfNode int) *kaitov1beta1.Workspace {
-	workspaceObj := &kaitov1beta1.Workspace{}
-	By("Creating a workspace CR with Phi 2 preset public mode and vLLM", func() {
-		uniqueID := fmt.Sprint("preset-phi2-", rand.Intn(1000))
-		workspaceObj = utils.GenerateInferenceWorkspaceManifestWithVLLM(uniqueID, namespaceName, "", numOfNode, "Standard_NV36ads_A10_v5",
-			&metav1.LabelSelector{
-				MatchLabels: map[string]string{"kaito-workspace": "public-preset-e2e-test-phi-2-vllm"},
-			}, nil, PresetPhi2Model, nil, nil, nil, "")
-
-		createAndValidateWorkspace(workspaceObj)
-	})
-	return workspaceObj
-}
-
-func createPhi2InferenceSetWithPresetPublicModeAndVLLM(replicas int) *kaitov1alpha1.InferenceSet {
+func createGemmaInferenceSetWithPresetPublicModeAndVLLM(replicas int) *kaitov1alpha1.InferenceSet {
 	inferenceSetObj := &kaitov1alpha1.InferenceSet{}
-	By("Creating a InferenceSet CR with Phi 2 preset public mode and vLLM", func() {
-		uniqueID := fmt.Sprint("preset-phi2-is-", rand.Intn(1000))
+	By("Creating a InferenceSet CR with Gemma preset public mode and vLLM", func() {
+		uniqueID := fmt.Sprint("preset-gemma-is-", rand.Intn(1000))
 		inferenceSetObj = utils.GenerateInferenceSetManifestWithVLLM(uniqueID, namespaceName, "", replicas, "Standard_NV36ads_A10_v5",
 			&metav1.LabelSelector{
-				MatchLabels: map[string]string{"kaito-workspace": "public-preset-is-e2e-test-phi-2-vllm"},
-			}, PresetPhi2Model, nil, nil, "")
+				MatchLabels: map[string]string{"kaito-workspace": "public-preset-is-e2e-test-gemma-vllm"},
+			}, PresetGemma3_4BInstructModel, nil, nil, "")
 		createAndValidateInferenceSet(inferenceSetObj)
 
 	})
