@@ -127,6 +127,7 @@ models:
     version: https://huggingface.co/microsoft/phi-2/commit/ef382358ec9e382308935a992d908de099b64c23
     runtime: tfs
     tag: 0.2.0
+    deprecated: true
     # Tag history:
     # 0.2.0 - Convert to individual OCI artifacts
     # 0.1.1 - bump vLLM to 0.8.5

@@ -69,6 +69,7 @@ data:
         version: https://huggingface.co/microsoft/phi-2/commit/ef382358ec9e382308935a992d908de099b64c23
         runtime: tfs
         tag: 0.2.0
+        deprecated: true
       - name: phi-3-mini-4k-instruct
         type: text-generation
         version: https://huggingface.co/microsoft/Phi-3-mini-4k-instruct/commit/0a67737cc96d2554230f90338b163bc6380a2a85
