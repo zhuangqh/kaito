@@ -461,7 +461,7 @@ func createGemmaInferenceSetWithPresetPublicModeAndVLLM(replicas int) *kaitov1al
 	inferenceSetObj := &kaitov1alpha1.InferenceSet{}
 	By("Creating a InferenceSet CR with Gemma preset public mode and vLLM", func() {
 		uniqueID := fmt.Sprint("preset-gemma-is-", rand.Intn(1000))
-		inferenceSetObj = utils.GenerateInferenceSetManifestWithVLLM(uniqueID, namespaceName, "", replicas, "Standard_NC24ads_A100_v4",
+		inferenceSetObj = utils.GenerateInferenceSetManifestWithVLLM(uniqueID, namespaceName, "", replicas, "Standard_NV36ads_A10_v5",
 			&metav1.LabelSelector{
 				MatchLabels: map[string]string{"kaito-workspace": "public-preset-is-e2e-test-gemma-vllm"},
 			}, PresetGemma3_4BInstructModel, nil, nil, modelSecret.Name)
