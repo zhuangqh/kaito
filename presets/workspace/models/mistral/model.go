@@ -186,9 +186,9 @@ func (*ministral3_3bInstruct) GetInferenceParameters() *model.PresetParam {
 		Metadata:                metadata.MustGet(PresetMinistral33BInstructModel),
 		DiskStorageRequirement:  "50Gi",
 		GPUCountRequirement:     "1",
-		TotalSafeTensorFileSize: "6Gi",
-		BytesPerToken:           131072,
-		ModelTokenLimit:         32768,
+		TotalSafeTensorFileSize: "8.70Gi",
+		BytesPerToken:           106496,
+		ModelTokenLimit:         262144,
 		RuntimeParam: model.RuntimeParam{
 			Transformers: model.HuggingfaceTransformersParam{
 				AccelerateParams:  inference.DefaultAccelerateParams,
@@ -216,9 +216,9 @@ func (*ministral3_8bInstruct) GetInferenceParameters() *model.PresetParam {
 		Metadata:                metadata.MustGet(PresetMinistral38BInstructModel),
 		DiskStorageRequirement:  "100Gi",
 		GPUCountRequirement:     "1",
-		TotalSafeTensorFileSize: "16Gi",
-		BytesPerToken:           131072,
-		ModelTokenLimit:         32768,
+		TotalSafeTensorFileSize: "19.41Gi",
+		BytesPerToken:           139264,
+		ModelTokenLimit:         262144,
 		RuntimeParam: model.RuntimeParam{
 			Transformers: model.HuggingfaceTransformersParam{
 				AccelerateParams:  inference.DefaultAccelerateParams,
@@ -246,9 +246,9 @@ func (*ministral3_14bInstruct) GetInferenceParameters() *model.PresetParam {
 		Metadata:                metadata.MustGet(PresetMinistral314BInstructModel),
 		DiskStorageRequirement:  "100Gi",
 		GPUCountRequirement:     "1",
-		TotalSafeTensorFileSize: "28Gi",
-		BytesPerToken:           131072,
-		ModelTokenLimit:         32768,
+		TotalSafeTensorFileSize: "29.29Gi",
+		BytesPerToken:           163840,
+		ModelTokenLimit:         262144,
 		RuntimeParam: model.RuntimeParam{
 			Transformers: model.HuggingfaceTransformersParam{
 				AccelerateParams:  inference.DefaultAccelerateParams,
@@ -274,11 +274,13 @@ type mistralLarge3_675bInstruct struct{}
 func (*mistralLarge3_675bInstruct) GetInferenceParameters() *model.PresetParam {
 	return &model.PresetParam{
 		Metadata:                metadata.MustGet(PresetMistralLarge3675BInstructModel),
-		DiskStorageRequirement:  "2000Gi",
-		GPUCountRequirement:     "8",
-		TotalSafeTensorFileSize: "1350Gi",
-		BytesPerToken:           131072,
-		ModelTokenLimit:         32768,
+		DiskStorageRequirement:  "800Gi",
+		GPUCountRequirement:     "1",
+		TotalSafeTensorFileSize: "634.70Gi",
+		// According to Multi-Head Latent Attention (MLA).
+		// BytesPerToken = 2 * (kv_lora_rank + qk_rope_head_dim) * num_hidden_layers
+		BytesPerToken:   70272,
+		ModelTokenLimit: 262144,
 		RuntimeParam: model.RuntimeParam{
 			Transformers: model.HuggingfaceTransformersParam{
 				AccelerateParams:  inference.DefaultAccelerateParams,
