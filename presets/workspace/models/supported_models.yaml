@@ -21,7 +21,7 @@ models:
     type: text-generation
     version: https://huggingface.co/meta-llama/Llama-3.1-8B-Instruct/commit/0e9e39f249a16976918f6564b8830bc894c89659
     runtime: tfs
-    private: true
+    downloadAuthRequired: true
     downloadAtRuntime: true
     tag: 0.2.0
     # Tag history:
@@ -31,7 +31,7 @@ models:
     type: text-generation
     version: https://huggingface.co/meta-llama/Llama-3.3-70B-Instruct/commit/6f6073b423013f6a7d4d9f39144961bfbfbc386b
     runtime: tfs
-    private: true
+    downloadAuthRequired: true
     downloadAtRuntime: true
     tag: 0.0.1
     # Tag history:

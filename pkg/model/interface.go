@@ -87,9 +87,9 @@ type Metadata struct {
 	// +optional
 	DownloadAtRuntime bool `yaml:"downloadAtRuntime,omitempty"`
 
-	// Private indicates whether the model is a private model.
+	// DownloadAuthRequired indicates whether the model requires authentication to download.
 	// +optional
-	Private bool `yaml:"private,omitempty"`
+	DownloadAuthRequired bool `yaml:"downloadAuthRequired,omitempty"`
 
 	// Tag is the tag of the container image used to run the model.
 	// If the model uses the KAITO base image, the tag field can be ignored
@@ -108,8 +108,8 @@ type Metadata struct {
 
 // Validate checks if the Metadata is valid.
 func (m *Metadata) Validate() error {
-	// Some private models may not have a version URL, so we allow it to be empty until
-	// we remove support for private preset models.
+	// Some models requiring authentication may not have a version URL, so we allow it to be empty until
+	// we remove support for preset models requiring authentication.
 	if m.Version == "" {
 		return nil
 	}
