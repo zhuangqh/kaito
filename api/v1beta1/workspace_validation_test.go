@@ -98,8 +98,9 @@ type testModelDownload struct{}
 func (*testModelDownload) GetInferenceParameters() *model.PresetParam {
 	return &model.PresetParam{
 		Metadata: model.Metadata{
-			Version:           "https://huggingface.co/test-repo/test-model/commit/test-revision",
-			DownloadAtRuntime: true,
+			Version:              "https://huggingface.co/test-repo/test-model/commit/test-revision",
+			DownloadAtRuntime:    true,
+			DownloadAuthRequired: true,
 		},
 		GPUCountRequirement:     "2",
 		TotalSafeTensorFileSize: "32Gi",
@@ -1169,7 +1170,7 @@ func TestInferenceSpecValidateCreate(t *testing.T) {
 					},
 				},
 			},
-			errContent: "This preset requires a modelAccessSecret with HF_TOKEN key under presetOptions to download the model",
+			errContent: "This preset requires authentication and needs a modelAccessSecret with HF_TOKEN key under presetOptions to download the model",
 			expectErrs: true,
 		},
 		{
