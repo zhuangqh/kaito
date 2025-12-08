@@ -592,25 +592,26 @@ fmt: ## Run go fmt against code.
 
 ## --------------------------------------
 ## Release
-## To create a release, run `make release VERSION=vx.y.z`
+## To create a release, run `make release VERSION=vx.y.z` or `make release VERSION=vx.y.z-rc.w`
 ## --------------------------------------
 
 ##@ Release
 
 .PHONY: release-manifest
 release-manifest: ## Update manifest and Helm charts for release.
-	@sed -i -e 's/^VERSION ?= .*/VERSION ?= ${VERSION}/' ./Makefile
-	@sed -i -e "s/version: .*/version: ${IMG_TAG}/" ./charts/kaito/workspace/Chart.yaml
-	@sed -i -e "s/appVersion: .*/appVersion: ${IMG_TAG}/" ./charts/kaito/workspace/Chart.yaml
-	@sed -i -e "s/tag: .*/tag: ${IMG_TAG}/" ./charts/kaito/workspace/values.yaml
-	@sed -i -e 's/IMG_TAG=.*/IMG_TAG=${IMG_TAG}/' ./charts/kaito/workspace/README.md
-	@sed -i -e "s/version: .*/version: ${IMG_TAG}/" ./charts/kaito/ragengine/Chart.yaml
-	@sed -i -e "s/appVersion: .*/appVersion: ${IMG_TAG}/" ./charts/kaito/ragengine/Chart.yaml
-	@sed -i -e "s/tag: .*/tag: ${IMG_TAG}/" ./charts/kaito/ragengine/values.yaml
-	@sed -i -e "s/presetRagImageTag: .*/presetRagImageTag: ${IMG_TAG}/" ./charts/kaito/ragengine/values.yaml
-	@sed -i -e 's/IMG_TAG=.*/IMG_TAG=${IMG_TAG}/' ./charts/kaito/ragengine/README.md
+	$(eval RELEASE_BRANCH := release-$(shell echo ${VERSION} | sed -E 's/^v([0-9]+\.[0-9]+).*/\1/'))
+	@sed -i '' -e 's/^VERSION ?= .*/VERSION ?= ${VERSION}/' ./Makefile
+	@sed -i '' -e "s/version: .*/version: ${IMG_TAG}/" ./charts/kaito/workspace/Chart.yaml
+	@sed -i '' -e "s/appVersion: .*/appVersion: ${IMG_TAG}/" ./charts/kaito/workspace/Chart.yaml
+	@sed -i '' -e "1,20s/  tag: .*/  tag: ${IMG_TAG}/" ./charts/kaito/workspace/values.yaml
+	@sed -i '' -e 's/IMG_TAG=.*/IMG_TAG=${IMG_TAG}/' ./charts/kaito/workspace/README.md
+	@sed -i '' -e "s/version: .*/version: ${IMG_TAG}/" ./charts/kaito/ragengine/Chart.yaml
+	@sed -i '' -e "s/appVersion: .*/appVersion: ${IMG_TAG}/" ./charts/kaito/ragengine/Chart.yaml
+	@sed -i '' -e "s/tag: .*/tag: ${IMG_TAG}/" ./charts/kaito/ragengine/values.yaml
+	@sed -i '' -e "s/presetRagImageTag: .*/presetRagImageTag: ${IMG_TAG}/" ./charts/kaito/ragengine/values.yaml
+	@sed -i '' -e 's/IMG_TAG=.*/IMG_TAG=${IMG_TAG}/' ./charts/kaito/ragengine/README.md
 
-	git checkout -b release-${VERSION}
+	git checkout -b $(RELEASE_BRANCH)
 	git add ./Makefile ./charts/kaito/workspace/Chart.yaml ./charts/kaito/workspace/values.yaml ./charts/kaito/workspace/README.md ./charts/kaito/ragengine/Chart.yaml ./charts/kaito/ragengine/values.yaml ./charts/kaito/ragengine/README.md
 	git commit -s -m "release: update manifest and helm charts for ${VERSION}"
 
@@ -623,8 +624,8 @@ release-manifest: ## Update manifest and Helm charts for release.
 
 .PHONY: post-release-doc-update
 post-release-doc-update:
-	@sed -i -e 's/export KAITO_WORKSPACE_VERSION=.*/export KAITO_WORKSPACE_VERSION=${IMG_TAG}/' ./website/docs/installation.md
-	@sed -i -e 's/$(shell grep 'default' ./terraform/variables.tf | sort | uniq -c | sort -nr | head -n1 | sed -E 's/^[ ]*[0-9]+[ ]+//')/default     = "${IMG_TAG}"/' ./terraform/variables.tf
+	@sed -i '' -e 's/export KAITO_WORKSPACE_VERSION=.*/export KAITO_WORKSPACE_VERSION=${IMG_TAG}/' ./website/docs/installation.md
+	@sed -i '' -e 's/$(shell grep 'default' ./terraform/variables.tf | sort | uniq -c | sort -nr | head -n1 | sed -E 's/^[ ]*[0-9]+[ ]+//')/default     = \"${IMG_TAG}\"/' ./terraform/variables.tf
 
 
 ## --------------------------------------
