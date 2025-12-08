@@ -2,7 +2,7 @@
 # Image URL to use all building/pushing image targets
 REGISTRY ?= YOUR_REGISTRY
 IMG_NAME ?= workspace
-VERSION ?= v0.7.0
+VERSION ?= v0.8.0-rc.0
 GPU_PROVISIONER_VERSION ?= 0.3.7
 RAGENGINE_IMG_NAME ?= ragengine
 IMG_TAG ?= $(subst v,,$(VERSION))
@@ -601,7 +601,7 @@ fmt: ## Run go fmt against code.
 release-manifest: ## Update manifest and Helm charts for release.
 	$(eval RELEASE_BRANCH := release-$(shell echo ${VERSION} | sed -E 's/^v([0-9]+\.[0-9]+).*/\1/'))
 	@sed -i '' -e 's/^VERSION ?= .*/VERSION ?= ${VERSION}/' ./Makefile
-	@sed -i '' -e "s/version: .*/version: ${IMG_TAG}/" ./charts/kaito/workspace/Chart.yaml
+	@sed -i '' -e "1,20s/version: .*/version: ${IMG_TAG}/" ./charts/kaito/workspace/Chart.yaml
 	@sed -i '' -e "s/appVersion: .*/appVersion: ${IMG_TAG}/" ./charts/kaito/workspace/Chart.yaml
 	@sed -i '' -e "1,20s/  tag: .*/  tag: ${IMG_TAG}/" ./charts/kaito/workspace/values.yaml
 	@sed -i '' -e 's/IMG_TAG=.*/IMG_TAG=${IMG_TAG}/' ./charts/kaito/workspace/README.md
