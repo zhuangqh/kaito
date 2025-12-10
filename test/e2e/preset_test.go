@@ -565,11 +565,7 @@ func validateInferenceSetReplicas(inferenceSetObj *kaitov1alpha1.InferenceSet, e
 				totalReadyReplicas += sts.Status.ReadyReplicas
 			}
 
-			if totalReadyReplicas == expectedReplicas {
-				return true
-			}
-
-			return false
+			return totalReadyReplicas == expectedReplicas
 		}, 20*time.Minute, utils.PollInterval).Should(BeTrue(), "Failed to wait for InferenceSet replicas to be ready")
 	})
 }
