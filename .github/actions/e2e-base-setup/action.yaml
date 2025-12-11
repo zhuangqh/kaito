@@ -26,7 +26,7 @@ inputs:
   k8s_version:
     description: "Kubernetes version"
     required: false
-    default: "1.33.6"
+    default: "1.32.9"
 
 outputs:
   cluster_name:
