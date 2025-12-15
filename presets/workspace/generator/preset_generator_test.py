@@ -1,3 +1,15 @@
+# Copyright (c) KAITO authors.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 import importlib.util
 import os
@@ -17,7 +29,7 @@ spec.loader.exec_module(preset_generator)
 PresetGenerator = preset_generator.PresetGenerator
 
 EXPECTED_OUTPUTS = {
-# outdated, legacy model. model files in .bin .safetensors format
+    # outdated, legacy model. model files in .bin .safetensors format
     "tiiuae/falcon-7b-instruct": """attn_type: MQA (Multi-Query Attention)
 name: falcon-7b-instruct
 type: tfs
@@ -36,7 +48,7 @@ vllm:
     tokenizer_mode: auto
   disallow_lora: false
 """,
-# modern standard model with GQA attention.
+    # modern standard model with GQA attention.
     "microsoft/Phi-4-mini-instruct": """attn_type: GQA (Grouped-Query Attention)
 name: phi-4-mini-instruct
 type: tfs
@@ -55,7 +67,7 @@ vllm:
     tokenizer_mode: auto
   disallow_lora: false
 """,
-# modern standard model with MLA attention.
+    # modern standard model with MLA attention.
     "deepseek-ai/DeepSeek-R1": """attn_type: MLA (Multi-Latent Attention)
 name: deepseek-r1
 type: tfs
@@ -74,7 +86,7 @@ vllm:
     tokenizer_mode: auto
   disallow_lora: false
 """,
-# model in mistral format with GQA attention.
+    # model in mistral format with GQA attention.
     "mistralai/Ministral-3-8B-Instruct-2512": """attn_type: GQA (Grouped-Query Attention)
 name: ministral-3-8b-instruct-2512
 type: tfs
@@ -93,7 +105,7 @@ vllm:
     tokenizer_mode: mistral
   disallow_lora: false
 """,
-# model in mistral format with MLA attention.
+    # model in mistral format with MLA attention.
     "mistralai/Mistral-Large-3-675B-Instruct-2512": """attn_type: MLA (Multi-Latent Attention)
 name: mistral-large-3-675b-instruct-2512
 type: tfs
@@ -114,19 +126,22 @@ vllm:
 """,
 }
 
-@pytest.mark.parametrize("model_name", [
-    "microsoft/Phi-4-mini-instruct",
-    "tiiuae/falcon-7b-instruct",
-    "mistralai/Ministral-3-8B-Instruct-2512",
-    "mistralai/Mistral-Large-3-675B-Instruct-2512",
-    "deepseek-ai/DeepSeek-R1"
-])
+
+@pytest.mark.parametrize(
+    "model_name",
+    [
+        "microsoft/Phi-4-mini-instruct",
+        "tiiuae/falcon-7b-instruct",
+        "mistralai/Ministral-3-8B-Instruct-2512",
+        "mistralai/Mistral-Large-3-675B-Instruct-2512",
+        "deepseek-ai/DeepSeek-R1",
+    ],
+)
 def test_preset_generator(model_name):
     generator = PresetGenerator(model_name)
     output = generator.generate()
-    
+
     expected = EXPECTED_OUTPUTS[model_name]
-    
+
     # Compare parsed YAML to avoid formatting differences
     assert yaml.safe_load(output) == yaml.safe_load(expected)
-

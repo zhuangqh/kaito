@@ -27,7 +27,9 @@ SYSTEM_FILE_DISKSIZE_GIB = 50
 DEFAULT_MODEL_TOKEN_LIMIT = 2048
 
 
-def filter_list_by_regex(input_list: list[dict], allow_pattern: list[str]) -> list[dict]:
+def filter_list_by_regex(
+    input_list: list[dict], allow_pattern: list[str]
+) -> list[dict]:
     if not allow_pattern:
         return input_list
     filtered_list = []
@@ -41,6 +43,7 @@ def filter_list_by_regex(input_list: list[dict], allow_pattern: list[str]) -> li
             filtered_list.append(item)
     return filtered_list
 
+
 def get_config_attr(config: Any, attributes: list, default: Any = None) -> Any:
     """Helper to safely fetch attributes handling different naming conventions."""
     for attr in attributes:
@@ -50,6 +53,7 @@ def get_config_attr(config: Any, attributes: list, default: Any = None) -> Any:
         elif hasattr(config, attr):
             return getattr(config, attr)
     return default
+
 
 @dataclass
 class Metadata:
@@ -124,7 +128,9 @@ class PresetGenerator:
 
         # Filter for safetensors, bin
         safetensors = filter_list_by_regex(files_info, [r".*\.safetensors", r".*\.bin"])
-        mistral_files = filter_list_by_regex(files_info, [r"consolidated.*\.safetensors"])
+        mistral_files = filter_list_by_regex(
+            files_info, [r"consolidated.*\.safetensors"]
+        )
 
         # follow the vllm logic to detect model format
         # ref: https://github.com/vllm-project/vllm/blob/v0.12.0/vllm/model_executor/model_loader/default_loader.py#L118
@@ -184,9 +190,15 @@ class PresetGenerator:
         # - common configuration: https://huggingface.co/docs/transformers/v4.57.3/en/main_classes/configuration
         # - non-standard, custom configuration: https://github.com/vllm-project/vllm/tree/v0.12.0/vllm/model_executor/models
         hidden_size = get_config_attr(config, ["hidden_size", "n_embd", "d_model"])
-        hidden_layers = get_config_attr(config, ["num_hidden_layers", "n_layer", "n_layers"], default=0)
-        attention_heads = get_config_attr(config, ["num_attention_heads", "n_head", "n_heads"])
-        kv_heads = get_config_attr(config, ["num_key_value_heads", "n_head_kv", "n_kv_heads"])
+        hidden_layers = get_config_attr(
+            config, ["num_hidden_layers", "n_layer", "n_layers"], default=0
+        )
+        attention_heads = get_config_attr(
+            config, ["num_attention_heads", "n_head", "n_heads"]
+        )
+        kv_heads = get_config_attr(
+            config, ["num_key_value_heads", "n_head_kv", "n_kv_heads"]
+        )
         head_dim = get_config_attr(config, ["head_dim"])
 
         # Calculate head_dim if missing (Standard Transformer logic)
@@ -240,7 +252,9 @@ class PresetGenerator:
 
     def finalize_params(self):
         # Disk storage requirement
-        self.param.disk_storage_requirement = f"{self.calculate_storage_size(self.param.model_file_size_gb)}Gi"
+        self.param.disk_storage_requirement = (
+            f"{self.calculate_storage_size(self.param.model_file_size_gb)}Gi"
+        )
 
         # VLLM params
         self.param.vllm.model_name = self.param.name
