@@ -22,6 +22,7 @@ from typing import Any
 
 import yaml
 from huggingface_hub import HfFileSystem
+from huggingface_hub.utils import GatedRepoError, RepositoryNotFoundError
 
 SYSTEM_FILE_DISKSIZE_GIB = 50
 DEFAULT_MODEL_TOKEN_LIMIT = 2048
@@ -63,7 +64,6 @@ class Metadata:
     download_at_runtime: bool = (
         True  # Typically true for Kaito presets generated dynamically
     )
-    # TODO: handle private/gated models
     download_auth_required: bool = False
 
 
@@ -112,19 +112,17 @@ class PresetGenerator:
     def fetch_model_metadata(self):
         logging.info(f"Fetching metadata for {self.model_repo}...")
 
-        # Check if private/gated by attempting to list
+        files_info = []
         try:
-            # Just a check to see if we can access
-            self.fs.ls(self.model_repo)
+            # we can list files only if repo exists.
+            # notes: private repo without token will still list files, but accessing them will fail.
+            files_info = self.fs.ls(self.model_repo, detail=True)
+        except (RepositoryNotFoundError, FileNotFoundError) as e:
+            logging.fatal(f"Model repository not found: {e}")
+            return
         except Exception as e:
-            if "401" in str(e) or "403" in str(e):
-                logging.error(f"Unauthorized. Token might be required. {e}")
-                self.param.download_auth_required = True
-                return
-            logging.warning(f"Error accessing model: {e}")
-
-        # List files with details
-        files_info = self.fs.ls(self.model_repo, detail=True)
+            logging.fatal(f"Error accessing model: {e}")
+            return
 
         # Filter for safetensors, bin
         safetensors = filter_list_by_regex(files_info, [r".*\.safetensors", r".*\.bin"])
@@ -156,10 +154,23 @@ class PresetGenerator:
         logging.info("Fetching config for compute params...")
         config_path = f"{self.model_repo}/{config_file}"
         try:
-            with self.fs.open(config_path, "r") as f:
+            # Try without token first
+            with HfFileSystem().open(config_path, "r") as f:
                 self.config = json.load(f)
+        except (GatedRepoError, PermissionError) as e:
+            logging.info(f"Unauthorized with no token. Token is required. {e}")
+            self.param.download_auth_required = True
+
+            # Try again with token
+            try:
+                with self.fs.open(config_path, "r") as f:
+                    self.config = json.load(f)
+            except Exception as e_auth:
+                logging.fatal(f"Failed to access model with token: {e_auth}")
+                return
         except Exception as e:
-            logging.fatal(f"Failed to calculate compute params: {e}")
+            logging.fatal(f"Error accessing model: {e}")
+            return
 
     def parse_model_metadata(self):
         # Max context window
