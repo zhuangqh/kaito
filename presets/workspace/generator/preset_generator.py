@@ -171,6 +171,7 @@ class PresetGenerator:
         except Exception as e:
             logging.fatal(f"Error accessing model: {e}")
             return
+        logging.info(f"Model Config is {self.config}")
 
     def parse_model_metadata(self):
         # Max context window
