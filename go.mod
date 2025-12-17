@@ -1,8 +1,6 @@
 module github.com/kaito-project/kaito
 
-go 1.24.6
-
-toolchain go1.24.7
+go 1.24.11
 
 require (
 	github.com/Azure/karpenter-provider-azure v1.6.3
