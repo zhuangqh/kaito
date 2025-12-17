@@ -157,12 +157,15 @@ tuning-metrics-server-test: ## Run Tuning Metrics Server tests with pytest.
 
 ##@ E2E Tests
 
-.PHONY: interference-api-e2e
+.PHONY: inference-api-e2e
 inference-api-e2e: ## Run inference API e2e tests with pytest.
 	pip install -r ./presets/workspace/dependencies/requirements-test.txt
 	pip install pytest-cov
 	pytest --cov -o log_cli=true -o log_cli_level=INFO presets/workspace/inference/vllm
 	pytest --cov -o log_cli=true -o log_cli_level=INFO presets/workspace/inference/text-generation
+
+	pip install -r ./presets/workspace/generator/requirements.txt
+	pytest --cov -o log_cli=true -o log_cli_level=INFO presets/workspace/generator/
 
 # Ginkgo configurations
 GINKGO_FOCUS ?=
