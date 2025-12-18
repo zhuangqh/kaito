@@ -503,6 +503,8 @@ func (c *WorkspaceReconciler) applyInference(ctx context.Context, wObj *kaitov1b
 		if err != nil && !apierrors.IsNotFound(err) {
 			return fmt.Errorf("failed to delete old inference deployment: %w", err)
 		}
+	} else if !apierrors.IsNotFound(err) {
+		return fmt.Errorf("failed to get existing inference deployment: %w", err)
 	}
 
 	var err error
