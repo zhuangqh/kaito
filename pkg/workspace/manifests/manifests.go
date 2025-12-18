@@ -63,15 +63,13 @@ func GenerateHeadlessServiceManifest(workspaceObj *kaitov1beta1.Workspace) *core
 	}
 }
 
-func GenerateServiceManifest(workspaceObj *kaitov1beta1.Workspace, serviceType corev1.ServiceType, isStatefulSet bool) *corev1.Service {
+func GenerateServiceManifest(workspaceObj *kaitov1beta1.Workspace, serviceType corev1.ServiceType) *corev1.Service {
 	selector := map[string]string{
 		kaitov1beta1.LabelWorkspaceName: workspaceObj.Name,
 	}
-	// If statefulset, modify the selector to select the pod with index 0 as the endpoint
-	if isStatefulSet {
-		podNameForIndex0 := fmt.Sprintf("%s-0", workspaceObj.Name)
-		selector["statefulset.kubernetes.io/pod-name"] = podNameForIndex0
-	}
+	// select the pod with index 0 as the endpoint
+	podNameForIndex0 := fmt.Sprintf("%s-0", workspaceObj.Name)
+	selector["statefulset.kubernetes.io/pod-name"] = podNameForIndex0
 
 	return &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
@@ -427,16 +425,15 @@ func GenerateInferencePoolOCIRepository(inferenceSetObj *kaitov1alpha1.Inference
 }
 
 // GenerateInferencePoolHelmRelease generates a Flux HelmRelease for the inference pool.
-func GenerateInferencePoolHelmRelease(inferenceSetObj *kaitov1alpha1.InferenceSet, isStatefulSet bool) (*helmv2.HelmRelease, error) {
+func GenerateInferencePoolHelmRelease(inferenceSetObj *kaitov1alpha1.InferenceSet) (*helmv2.HelmRelease, error) {
 	matchLabels := map[string]string{
 		consts.WorkspaceCreatedByInferenceSetLabel: inferenceSetObj.Name,
 	}
-	if isStatefulSet {
-		// Endpoint Picker from Gateway API Inference Extension expects to pick an endpoint that can serve traffic.
-		// In a multi-node inference environment, this means we need to select the leader pod (with pod index 0)
-		// since only the leader pod is capable of serving traffic.
-		matchLabels[appsv1.PodIndexLabel] = "0"
-	}
+
+	// Endpoint Picker from Gateway API Inference Extension expects to pick an endpoint that can serve traffic.
+	// In a multi-node inference environment, this means we need to select the leader pod (with pod index 0)
+	// since only the leader pod is capable of serving traffic.
+	matchLabels[appsv1.PodIndexLabel] = "0"
 
 	// Based on https://github.com/kubernetes-sigs/gateway-api-inference-extension/blob/v1.0.0/config/charts/inferencepool/values.yaml
 	helmValues := map[string]any{

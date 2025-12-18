@@ -328,35 +328,31 @@ func TestEnsureService(t *testing.T) {
 	}{
 		"Existing service is found for workspace": {
 			callMocks: func(c *test.MockClient) {
-				c.On("Get", mock.IsType(context.Background()), mock.Anything, mock.IsType(&corev1.ConfigMap{}), mock.Anything).Return(nil)
-				c.On("Get", mock.IsType(context.Background()), mock.Anything, mock.IsType(&corev1.Service{}), mock.Anything).Return(nil)
+				c.On("Create", mock.IsType(context.Background()), mock.MatchedBy(func(s *corev1.Service) bool { return s.Name == "testWorkspace" }), mock.Anything).Return(apierrors.NewAlreadyExists(corev1.Resource("services"), "testWorkspace"))
+				c.On("Create", mock.IsType(context.Background()), mock.MatchedBy(func(s *corev1.Service) bool { return s.Name == "testWorkspace-headless" }), mock.Anything).Return(apierrors.NewAlreadyExists(corev1.Resource("services"), "testWorkspace-headless"))
 			},
 			expectedError: nil,
 			workspace:     test.MockWorkspaceDistributedModel,
 		},
 		"Service creation fails": {
 			callMocks: func(c *test.MockClient) {
-				c.On("Get", mock.IsType(context.Background()), mock.Anything, mock.IsType(&corev1.ConfigMap{}), mock.Anything).Return(nil)
-				c.On("Get", mock.IsType(context.Background()), mock.Anything, mock.IsType(&corev1.Service{}), mock.Anything).Return(test.NotFoundError())
-				c.On("Create", mock.IsType(context.Background()), mock.IsType(&corev1.Service{}), mock.Anything).Return(errors.New("cannot create service"))
+				c.On("Create", mock.IsType(context.Background()), mock.MatchedBy(func(s *corev1.Service) bool { return s.Name == "testWorkspace" }), mock.Anything).Return(errors.New("cannot create service"))
 			},
 			expectedError: errors.New("cannot create service"),
 			workspace:     test.MockWorkspaceDistributedModel,
 		},
 		"Successfully creates a new service": {
 			callMocks: func(c *test.MockClient) {
-				c.On("Get", mock.IsType(context.Background()), mock.Anything, mock.IsType(&corev1.ConfigMap{}), mock.Anything).Return(nil)
-				c.On("Get", mock.IsType(context.Background()), mock.Anything, mock.IsType(&corev1.Service{}), mock.Anything).Return(test.NotFoundError())
-				c.On("Create", mock.IsType(context.Background()), mock.IsType(&corev1.Service{}), mock.Anything).Return(nil)
+				c.On("Create", mock.IsType(context.Background()), mock.MatchedBy(func(s *corev1.Service) bool { return s.Name == "testWorkspace" }), mock.Anything).Return(nil)
+				c.On("Create", mock.IsType(context.Background()), mock.MatchedBy(func(s *corev1.Service) bool { return s.Name == "testWorkspace-headless" }), mock.Anything).Return(nil)
 			},
 			expectedError: nil,
 			workspace:     test.MockWorkspaceDistributedModel,
 		},
 		"Successfully creates a new service for a custom model": {
 			callMocks: func(c *test.MockClient) {
-				c.On("Get", mock.IsType(context.Background()), mock.Anything, mock.IsType(&corev1.ConfigMap{}), mock.Anything).Return(nil)
-				c.On("Get", mock.IsType(context.Background()), mock.Anything, mock.IsType(&corev1.Service{}), mock.Anything).Return(test.NotFoundError())
-				c.On("Create", mock.IsType(context.Background()), mock.IsType(&corev1.Service{}), mock.Anything).Return(nil)
+				c.On("Create", mock.IsType(context.Background()), mock.MatchedBy(func(s *corev1.Service) bool { return s.Name == "testCustomWorkspace" }), mock.Anything).Return(nil)
+				c.On("Create", mock.IsType(context.Background()), mock.MatchedBy(func(s *corev1.Service) bool { return s.Name == "testCustomWorkspace-headless" }), mock.Anything).Return(nil)
 			},
 			expectedError: nil,
 			workspace:     test.MockWorkspaceCustomModel,
@@ -394,6 +390,7 @@ func TestApplyInferenceWithPreset(t *testing.T) {
 	}{
 		"Fail to get inference because associated workload with workspace cannot be retrieved": {
 			callMocks: func(c *test.MockClient) {
+				c.On("Get", mock.IsType(context.Background()), mock.Anything, mock.IsType(&appsv1.Deployment{}), mock.Anything).Return(test.NotFoundError())
 				c.On("Get", mock.IsType(context.Background()), mock.Anything, mock.IsType(&corev1.ConfigMap{}), mock.Anything).Return(nil)
 				c.On("Get", mock.IsType(context.Background()), mock.Anything, mock.IsType(&appsv1.StatefulSet{}), mock.Anything).Return(errors.New("Failed to get resource"))
 				c.On("Get", mock.IsType(context.Background()), mock.Anything, mock.IsType(&v1beta1.Workspace{}), mock.Anything).Return(nil)
@@ -404,6 +401,7 @@ func TestApplyInferenceWithPreset(t *testing.T) {
 		},
 		"Create preset inference because inference workload did not exist": {
 			callMocks: func(c *test.MockClient) {
+				c.On("Get", mock.IsType(context.Background()), mock.Anything, mock.IsType(&appsv1.Deployment{}), mock.Anything).Return(test.NotFoundError())
 				c.On("Get", mock.IsType(context.Background()), mock.Anything, mock.IsType(&corev1.ConfigMap{}), mock.Anything).Return(nil)
 				c.On("Get", mock.IsType(context.Background()), mock.Anything, mock.IsType(&storagev1.StorageClass{}), mock.Anything).Return(nil)
 				c.On("Get", mock.IsType(context.Background()), mock.Anything, mock.IsType(&appsv1.StatefulSet{}), mock.Anything).Return(test.NotFoundError()).Times(4)
@@ -448,6 +446,7 @@ func TestApplyInferenceWithPreset(t *testing.T) {
 						ReadyReplicas: 1,
 					},
 				}
+				c.On("Get", mock.IsType(context.Background()), mock.Anything, mock.IsType(&appsv1.Deployment{}), mock.Anything).Return(test.NotFoundError())
 				c.On("Get", mock.IsType(context.Background()), mock.Anything, mock.IsType(&corev1.ConfigMap{}), mock.Anything).Return(nil)
 				c.On("Get", mock.Anything, mock.Anything, mock.IsType(&appsv1.StatefulSet{}), mock.Anything).Return(nil)
 				c.On("Update", mock.Anything, mock.IsType(&appsv1.StatefulSet{}), mock.Anything).Return(nil)
@@ -460,6 +459,7 @@ func TestApplyInferenceWithPreset(t *testing.T) {
 
 		"Update statefulset with new configuration": {
 			callMocks: func(c *test.MockClient) {
+				c.On("Get", mock.IsType(context.Background()), mock.Anything, mock.IsType(&appsv1.Deployment{}), mock.Anything).Return(test.NotFoundError())
 				c.On("Get", mock.IsType(context.Background()), mock.Anything, mock.IsType(&corev1.ConfigMap{}), mock.Anything).Return(nil)
 				c.On("Get", mock.IsType(context.Background()), mock.Anything, mock.IsType(&storagev1.StorageClass{}), mock.Anything).Return(nil)
 				// Mocking existing StatefulSet object
@@ -519,6 +519,7 @@ func TestApplyInferenceWithTemplate(t *testing.T) {
 	}{
 		"Fail to apply inference from workspace template": {
 			callMocks: func(c *test.MockClient) {
+				c.On("Get", mock.IsType(context.Background()), mock.Anything, mock.IsType(&appsv1.Deployment{}), mock.Anything).Return(test.NotFoundError())
 				c.On("Get", mock.IsType(context.Background()), mock.Anything, mock.IsType(&corev1.ConfigMap{}), mock.Anything).Return(nil)
 				c.On("Create", mock.IsType(context.Background()), mock.IsType(&appsv1.StatefulSet{}), mock.Anything).Return(errors.New("Failed to create deployment"))
 				c.On("Get", mock.IsType(context.Background()), mock.Anything, mock.IsType(&v1beta1.Workspace{}), mock.Anything).Return(nil)
@@ -529,6 +530,7 @@ func TestApplyInferenceWithTemplate(t *testing.T) {
 		},
 		"Apply inference from workspace template": {
 			callMocks: func(c *test.MockClient) {
+				c.On("Get", mock.IsType(context.Background()), mock.Anything, mock.IsType(&appsv1.Deployment{}), mock.Anything).Return(test.NotFoundError())
 				c.On("Create", mock.IsType(context.Background()), mock.IsType(&appsv1.StatefulSet{}), mock.Anything).Return(nil)
 				c.On("Get", mock.Anything, mock.Anything, mock.IsType(&appsv1.StatefulSet{}), mock.Anything).Return(nil)
 				c.On("Get", mock.IsType(context.Background()), mock.Anything, mock.IsType(&v1beta1.Workspace{}), mock.Anything).Return(nil)
