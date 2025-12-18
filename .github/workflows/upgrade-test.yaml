@@ -85,7 +85,7 @@ jobs:
           kubectl wait --for=condition=InferenceReady workspace/workspace-mistral-7b-instruct --timeout=1000s
           
           # Verify it is using a Deployment
-          if ! kubectl get deployment -l kaito.sh/workspace=workspace-mistral-7b-instruct; then
+          if ! kubectl get deployment workspace-mistral-7b-instruct; then
             echo "Error: Deployment not found for workspace"
             exit 1
           fi
@@ -112,13 +112,13 @@ jobs:
           kubectl wait --for=condition=InferenceReady workspace/workspace-mistral-7b-instruct --timeout=600s
           
           # Verify it is now using a StatefulSet
-          if ! kubectl get statefulset -l kaito.sh/workspace=workspace-mistral-7b-instruct; then
+          if ! kubectl get statefulset workspace-mistral-7b-instruct; then
             echo "Error: StatefulSet not found for workspace after upgrade"
             exit 1
           fi
           
           # Verify Deployment is gone
-          if kubectl get deployment -l kaito.sh/workspace=workspace-mistral-7b-instruct 2>/dev/null; then
+          if kubectl get deployment workspace-mistral-7b-instruct 2>/dev/null; then
             echo "Error: Old Deployment still exists"
             exit 1
           fi
