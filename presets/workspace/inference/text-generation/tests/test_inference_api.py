@@ -25,6 +25,7 @@ parent_dir = str(Path(__file__).resolve().parent.parent)
 # Add the parent directory to sys.path
 sys.path.append(parent_dir)
 
+
 @pytest.fixture(
     params=[
         {
