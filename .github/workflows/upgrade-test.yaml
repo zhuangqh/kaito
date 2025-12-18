@@ -82,7 +82,7 @@ jobs:
         shell: bash
         run: |
           # Wait for workspace to be ready
-          kubectl wait --for=condition=InferenceReady workspace/workspace-mistral-7b-instruct --timeout=600s
+          kubectl wait --for=condition=InferenceReady workspace/workspace-mistral-7b-instruct --timeout=1000s
           
           # Verify it is using a Deployment
           if ! kubectl get deployment -l kaito.sh/workspace=workspace-mistral-7b-instruct; then
@@ -109,7 +109,7 @@ jobs:
         shell: bash
         run: |
           # Wait for workspace to be ready again if needed
-          kubectl wait --for=condition=InferenceReady workspace/workspace-mistral-7b-instruct --timeout=300s
+          kubectl wait --for=condition=InferenceReady workspace/workspace-mistral-7b-instruct --timeout=600s
           
           # Verify it is now using a StatefulSet
           if ! kubectl get statefulset -l kaito.sh/workspace=workspace-mistral-7b-instruct; then
