@@ -22,7 +22,7 @@ inputs:
   region:
     description: "the azure location to run the e2e test in"
     required: false
-    default: "eastus"
+    default: "swedencentral"
   k8s_version:
     description: "Kubernetes version"
     required: false
