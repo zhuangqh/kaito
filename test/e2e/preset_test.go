@@ -1250,7 +1250,7 @@ var _ = Describe("Workspace Preset", func() {
 		validateWorkspaceReadiness(workspaceObj)
 	})
 
-	It("should create a Phi-3-mini-128k-instruct workspace with preset public mode successfully", utils.GinkgoLabelFastCheck, func() {
+	It("should create a Phi-3-mini-128k-instruct workspace with preset public mode successfully", func() {
 		numOfNode := 1
 		workspaceObj := createPhi3WorkspaceWithPresetPublicMode(numOfNode)
 
@@ -1290,7 +1290,7 @@ var _ = Describe("Workspace Preset", func() {
 		validateWorkspaceReadiness(workspaceObj)
 	})
 
-	It("should create a gemma-3-4b-instruct workspace with preset public mode successfully", utils.GinkgoLabelFastCheck, func() {
+	It("should create a gemma-3-4b-instruct workspace with preset public mode successfully", func() {
 		numOfNode := 1
 		workspaceObj := createGemma3_4BInstructWorkspaceWithPresetPublicMode(numOfNode)
 

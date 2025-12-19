@@ -495,6 +495,11 @@ func (c *WorkspaceReconciler) applyInference(ctx context.Context, wObj *kaitov1b
 		c.Recorder.Eventf(wObj, "Warning", "WorkloadMigration",
 			"Migrating inference workload from Deployment to StatefulSet, this will cause a few minutes of downtime.")
 		klog.InfoS("Delete existing deployment workload for workspace", "workspace", klog.KObj(wObj))
+		if err := workspace.UpdateStatusConditionIfNotMatch(ctx, c.Client, wObj, kaitov1beta1.WorkspaceConditionTypeInferenceStatus, metav1.ConditionFalse,
+			"WorkspaceInferenceMigration", "Migrating inference workload from Deployment to StatefulSet"); err != nil {
+			klog.ErrorS(err, "failed to update workspace status", "workspace", klog.KObj(wObj))
+			return err
+		}
 		err = c.Delete(ctx, &existingDeploy, &client.DeleteOptions{
 			Preconditions: &metav1.Preconditions{
 				UID: &existingDeploy.UID,
