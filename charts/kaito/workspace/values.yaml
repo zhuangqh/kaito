@@ -66,9 +66,17 @@ local-csi-driver:
     driver:
       repository: mcr.microsoft.com/acstor/local-csi-driver
       tag: v0.2.9
+      pullPolicy: Always
     manager:
       repository: mcr.microsoft.com/acstor/local-csi-manager
       tag: v0.2.9
+      pullPolicy: Always
+    csiProvisioner:
+      pullPolicy: Always
+    csiResizer:
+      pullPolicy: Always
+    nodeDriverRegistrar:
+      pullPolicy: Always
   daemonset:
     podSelector:
       app: csi-local-node
