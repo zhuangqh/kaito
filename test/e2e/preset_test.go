@@ -40,19 +40,19 @@ import (
 )
 
 const (
-	PresetLlama3_1_8BInstruct           = "llama-3.1-8b-instruct"
-	PresetLlama3_3_70BInstruct          = "llama-3.3-70b-instruct"
+	PresetLlama3_1_8BInstruct       = "llama-3.1-8b-instruct"
+	PresetLlama3_3_70BInstruct      = "llama-3.3-70b-instruct"
 	PresetFalcon7BModel             = "falcon-7b"
 	PresetFalcon40BModel            = "falcon-40b"
 	PresetQwen3_Coder30BModel       = "Qwen/Qwen3-Coder-30B-A3B-Instruct"
 	PresetPhi3Mini128kModel         = "phi-3-mini-128k-instruct"
 	PresetPhi4MiniModel             = "phi-4-mini-instruct"
-	PresetGemma3_4BInstructModel        = "gemma-3-4b-instruct"
-	PresetGemma3_27BInstructModel       = "gemma-3-27b-instruct"
-	PresetGPT_OSS_20BModel              = "gpt-oss-20b"
-	PresetGPT_OSS_120BModel             = "gpt-oss-120b"
-	PresetMinistral33BInstructModel     = "ministral-3-3b-instruct"
-	WorkspaceHashAnnotation             = "workspace.kaito.io/hash"
+	PresetGemma3_4BInstructModel    = "gemma-3-4b-instruct"
+	PresetGemma3_27BInstructModel   = "gemma-3-27b-instruct"
+	PresetGPT_OSS_20BModel          = "gpt-oss-20b"
+	PresetGPT_OSS_120BModel         = "gpt-oss-120b"
+	PresetMinistral33BInstructModel = "ministral-3-3b-instruct"
+	WorkspaceHashAnnotation         = "workspace.kaito.io/hash"
 	// WorkspaceRevisionAnnotation represents the revision number of the workload managed by the workspace
 	WorkspaceRevisionAnnotation = "workspace.kaito.io/revision"
 )
