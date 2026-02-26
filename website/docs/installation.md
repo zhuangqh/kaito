@@ -42,6 +42,55 @@ kubectl describe deploy kaito-workspace -n kaito-workspace
 
 You should see the workspace controller pod in a `Running` state.
 
+## Configure Node Image Family (Optional)
+
+KAITO supports configuring the node image family for generated `NodeClaim` resources.
+
+:::note Version requirement
+Node Image Family is supported in KAITO **v0.9.0 and later**.
+:::
+
+- Supported values: `ubuntu`, `azurelinux`
+- Controller startup parameter: `--default-node-image-family`
+- Helm chart value: `defaultNodeImageFamily` (mapped to `--default-node-image-family`)
+- Workspace annotation: `metadata.annotations["kaito.sh/node-image-family"]`
+
+### Controller startup parameter
+
+You can set the controller-level default with Helm:
+
+```bash
+helm upgrade --install kaito-workspace kaito/workspace \
+  --namespace kaito-workspace \
+  --create-namespace \
+  --set clusterName="$CLUSTER_NAME" \
+  --set defaultNodeImageFamily=azurelinux \
+  --wait
+```
+
+Notes:
+
+- If startup parameter `--default-node-image-family` is empty, KAITO uses `ubuntu`.
+- If startup parameter `--default-node-image-family` is not one of `ubuntu` or `azurelinux`, the workspace controller fails to start.
+
+### Per-workspace override via annotation
+
+You can override the controller default on a specific `Workspace`:
+
+```yaml
+apiVersion: kaito.sh/v1beta1
+kind: Workspace
+metadata:
+  name: workspace-phi-4-mini
+  annotations:
+    kaito.sh/node-image-family: azurelinux
+```
+
+Notes:
+
+- `kaito.sh/node-image-family` has higher priority than `--default-node-image-family`.
+- If the annotation value is unsupported, Workspace creation is rejected by validation webhook.
+
 ## Setup GPU Nodes
 
 You need to create GPU nodes in order to run a Workspace with KAITO. There are two **mutually exclusive** options:
