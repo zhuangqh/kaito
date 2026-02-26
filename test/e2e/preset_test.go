@@ -40,24 +40,19 @@ import (
 )
 
 const (
-	PresetLlama3_1_8BInstruct           = "llama-3.1-8b-instruct"
-	PresetLlama3_3_70BInstruct          = "llama-3.3-70b-instruct"
-	PresetFalcon7BModel                 = "falcon-7b"
-	PresetFalcon40BModel                = "falcon-40b"
-	PresetMistral7BInstructModel        = "mistral-7b-instruct"
-	PresetQwen2_5Coder7BModel           = "qwen2.5-coder-7b-instruct"
-	PresetQwen2_7BModel                 = "Qwen/Qwen2-7B"
-	PresetQwen3_Coder30BModel           = "Qwen/Qwen3-Coder-30B-A3B-Instruct"
-	PresetPhi3Mini128kModel             = "phi-3-mini-128k-instruct"
-	PresetDeepSeekR1DistillLlama8BModel = "deepseek-r1-distill-llama-8b"
-	PresetDeepSeekR1DistillQwen14BModel = "deepseek-r1-distill-qwen-14b"
-	PresetPhi4MiniModel                 = "phi-4-mini-instruct"
-	PresetGemma3_4BInstructModel        = "gemma-3-4b-instruct"
-	PresetGemma3_27BInstructModel       = "gemma-3-27b-instruct"
-	PresetGPT_OSS_20BModel              = "gpt-oss-20b"
-	PresetGPT_OSS_120BModel             = "gpt-oss-120b"
-	PresetMinistral33BInstructModel     = "ministral-3-3b-instruct"
-	WorkspaceHashAnnotation             = "workspace.kaito.io/hash"
+	PresetLlama3_1_8BInstruct       = "llama-3.1-8b-instruct"
+	PresetLlama3_3_70BInstruct      = "llama-3.3-70b-instruct"
+	PresetFalcon7BModel             = "falcon-7b"
+	PresetFalcon40BModel            = "falcon-40b"
+	PresetQwen3_Coder30BModel       = "Qwen/Qwen3-Coder-30B-A3B-Instruct"
+	PresetPhi3Mini128kModel         = "phi-3-mini-128k-instruct"
+	PresetPhi4MiniModel             = "phi-4-mini-instruct"
+	PresetGemma3_4BInstructModel    = "gemma-3-4b-instruct"
+	PresetGemma3_27BInstructModel   = "gemma-3-27b-instruct"
+	PresetGPT_OSS_20BModel          = "gpt-oss-20b"
+	PresetGPT_OSS_120BModel         = "gpt-oss-120b"
+	PresetMinistral33BInstructModel = "ministral-3-3b-instruct"
+	WorkspaceHashAnnotation         = "workspace.kaito.io/hash"
 	// WorkspaceRevisionAnnotation represents the revision number of the workload managed by the workspace
 	WorkspaceRevisionAnnotation = "workspace.kaito.io/revision"
 )
@@ -140,49 +135,6 @@ func updateCustomWorkspaceWithAdapter(workspaceObj *kaitov1beta1.Workspace, vali
 	return workspaceObj
 }
 
-func createFalconWorkspaceWithPresetPublicMode(numOfNode int) *kaitov1beta1.Workspace {
-	workspaceObj := &kaitov1beta1.Workspace{}
-	By("Creating a workspace CR with Falcon 7B preset public mode", func() {
-		uniqueID := fmt.Sprint("preset-falcon-", rand.Intn(1000))
-		workspaceObj = utils.GenerateInferenceWorkspaceManifest(uniqueID, namespaceName, "", numOfNode, "Standard_NV36ads_A10_v5",
-			&metav1.LabelSelector{
-				MatchLabels: map[string]string{"kaito-workspace": "public-preset-e2e-test-falcon"},
-			}, nil, PresetFalcon7BModel, nil, nil, nil, "", "")
-
-		createAndValidateWorkspace(workspaceObj)
-	})
-	return workspaceObj
-}
-
-func createMistralWorkspaceWithPresetPublicMode(numOfNode int) *kaitov1beta1.Workspace {
-	workspaceObj := &kaitov1beta1.Workspace{}
-	By("Creating a workspace CR with Mistral 7B preset public mode", func() {
-		uniqueID := fmt.Sprint("preset-mistral-", rand.Intn(1000))
-		workspaceObj = utils.GenerateInferenceWorkspaceManifest(uniqueID, namespaceName, "", numOfNode, "Standard_NV36ads_A10_v5",
-			&metav1.LabelSelector{
-				MatchLabels: map[string]string{"kaito-workspace": "public-preset-e2e-test-mistral"},
-			}, nil, PresetMistral7BInstructModel, nil, nil, nil, "", "")
-
-		createAndValidateWorkspace(workspaceObj)
-	})
-	return workspaceObj
-}
-
-func createLlama3_1_8BInstructWorkspaceWithPresetPublicMode(numOfNode int) *kaitov1beta1.Workspace {
-	modelSecret := createAndValidateModelSecret()
-	workspaceObj := &kaitov1beta1.Workspace{}
-	By("Creating a workspace CR with Llama 3.1-8B Instruct preset public mode", func() {
-		uniqueID := fmt.Sprint("preset-llama3-1-8b-", rand.Intn(1000))
-		workspaceObj = utils.GenerateInferenceWorkspaceManifest(uniqueID, namespaceName, "",
-			numOfNode, "Standard_NV36ads_A10_v5", &metav1.LabelSelector{
-				MatchLabels: map[string]string{"kaito-workspace": "public-preset-e2e-test-llama3-1-8b"},
-			}, nil, PresetLlama3_1_8BInstruct, nil, nil, nil, modelSecret.Name, "") // Llama 3.1-8B Instruct model requires a model access secret
-
-		createAndValidateWorkspace(workspaceObj)
-	})
-	return workspaceObj
-}
-
 func createCustomWorkspaceWithPresetCustomMode(imageName string, numOfNode int) *kaitov1beta1.Workspace {
 	workspaceObj := &kaitov1beta1.Workspace{}
 	By("Creating a workspace CR with custom workspace mode", func() {
@@ -191,20 +143,6 @@ func createCustomWorkspaceWithPresetCustomMode(imageName string, numOfNode int) 
 			numOfNode, "Standard_D4s_v3", &metav1.LabelSelector{
 				MatchLabels: map[string]string{"kaito-workspace": "private-preset-e2e-test-custom"},
 			}, nil, "", nil, utils.GeneratePodTemplate(uniqueID, namespaceName, imageName, nil), nil, "", "")
-
-		createAndValidateWorkspace(workspaceObj)
-	})
-	return workspaceObj
-}
-
-func createPhi3WorkspaceWithPresetPublicMode(numOfNode int) *kaitov1beta1.Workspace {
-	workspaceObj := &kaitov1beta1.Workspace{}
-	By("Creating a workspace CR with Phi-3-mini-128k-instruct preset public mode", func() {
-		uniqueID := fmt.Sprint("preset-phi3-", rand.Intn(1000))
-		workspaceObj = utils.GenerateInferenceWorkspaceManifest(uniqueID, namespaceName, "",
-			numOfNode, "Standard_NV36ads_A10_v5", &metav1.LabelSelector{
-				MatchLabels: map[string]string{"kaito-workspace": "public-preset-e2e-test-phi-3-mini-128k-instruct"},
-			}, nil, PresetPhi3Mini128kModel, nil, nil, nil, "", "")
 
 		createAndValidateWorkspace(workspaceObj)
 	})
@@ -827,51 +765,6 @@ func validateModelsEndpoint(workspaceObj *kaitov1beta1.Workspace) {
 	})
 }
 
-func validateCompletionsEndpoint(workspaceObj *kaitov1beta1.Workspace) {
-	deploymentName := workspaceObj.Name
-	modelName := getModelName(string(workspaceObj.Inference.Preset.Name))
-
-	expectedCompletion := `"object":"text_completion"`
-	execOption := corev1.PodExecOptions{
-		Command:   []string{"bash", "-c", fmt.Sprintf(`apt-get update && apt-get install curl -y; curl -s -X POST -H "Content-Type: application/json" -d '{"model":"%s","prompt":"What is Kubernetes?","max_tokens":7,"temperature":0}' http://%s.%s.svc.cluster.local:80/v1/completions | grep -e '%s'`, modelName, workspaceObj.Name, workspaceObj.Namespace, expectedCompletion)},
-		Container: deploymentName,
-		Stdout:    true,
-		Stderr:    true,
-	}
-
-	By("Validating the /v1/completions endpoint", func() {
-		Eventually(func() bool {
-			coreClient, err := utils.GetK8sClientset()
-			if err != nil {
-				GinkgoWriter.Printf("Failed to create core client: %v\n", err)
-				return false
-			}
-
-			namespace := workspaceObj.Namespace
-			podName, err := utils.GetPodNameForWorkspace(coreClient, namespace, deploymentName)
-			if err != nil {
-				GinkgoWriter.Printf("Failed to get pod name for deployment %s: %v\n", deploymentName, err)
-				return false
-			}
-
-			k8sConfig, err := utils.GetK8sConfig()
-			if err != nil {
-				GinkgoWriter.Printf("Failed to get k8s config: %v\n", err)
-				return false
-			}
-
-			ctx, cancel := context.WithTimeout(context.Background(), 1*time.Minute)
-			defer cancel()
-			_, err = utils.ExecSync(ctx, k8sConfig, coreClient, namespace, podName, execOption)
-			if err != nil {
-				GinkgoWriter.Printf("validate command fails: %v\n", err)
-				return false
-			}
-			return true
-		}, 5*time.Minute, utils.PollInterval).Should(BeTrue(), "Failed to wait for /v1/completions endpoint to be ready")
-	})
-}
-
 func validateChatCompletionsEndpoint(workspaceObj *kaitov1beta1.Workspace) {
 	deploymentName := workspaceObj.Name
 	modelName := getModelName(string(workspaceObj.Inference.Preset.Name))
@@ -1210,75 +1103,6 @@ var _ = Describe("Workspace Preset", func() {
 		loadModelVersions()
 	})
 
-	It("should create a mistral workspace with preset public mode successfully", func() {
-		numOfNode := 1
-		workspaceObj := createMistralWorkspaceWithPresetPublicMode(numOfNode)
-
-		defer cleanupResources(workspaceObj)
-		time.Sleep(30 * time.Second)
-
-		validateCreateNode(workspaceObj, numOfNode)
-		validateResourceStatus(workspaceObj)
-
-		time.Sleep(30 * time.Second)
-
-		validateAssociatedService(workspaceObj)
-		validateInferenceConfig(workspaceObj)
-
-		validateInferenceResource(workspaceObj, int32(numOfNode))
-
-		validateWorkspaceReadiness(workspaceObj)
-
-		validateModelsEndpoint(workspaceObj)
-		validateChatCompletionsEndpoint(workspaceObj)
-	})
-
-	It("should create a falcon workspace with preset public mode successfully", func() {
-		numOfNode := 1
-		workspaceObj := createFalconWorkspaceWithPresetPublicMode(numOfNode)
-
-		defer cleanupResources(workspaceObj)
-		time.Sleep(30 * time.Second)
-
-		validateCreateNode(workspaceObj, numOfNode)
-		validateResourceStatus(workspaceObj)
-
-		time.Sleep(30 * time.Second)
-
-		validateAssociatedService(workspaceObj)
-		validateInferenceConfig(workspaceObj)
-
-		validateInferenceResource(workspaceObj, int32(numOfNode))
-
-		validateWorkspaceReadiness(workspaceObj)
-
-		validateModelsEndpoint(workspaceObj)
-		validateChatCompletionsEndpoint(workspaceObj)
-	})
-
-	It("should create a llama-3.1-8b-instruct workspace with preset public mode successfully", utils.GinkgoLabelFastCheck, func() {
-		numOfNode := 1
-		workspaceObj := createLlama3_1_8BInstructWorkspaceWithPresetPublicMode(numOfNode)
-
-		defer cleanupResources(workspaceObj)
-		time.Sleep(30 * time.Second)
-
-		validateCreateNode(workspaceObj, numOfNode)
-		validateResourceStatus(workspaceObj)
-
-		time.Sleep(30 * time.Second)
-
-		validateAssociatedService(workspaceObj)
-		validateInferenceConfig(workspaceObj)
-
-		validateInferenceResource(workspaceObj, int32(numOfNode))
-
-		validateWorkspaceReadiness(workspaceObj)
-
-		validateModelsEndpoint(workspaceObj)
-		validateChatCompletionsEndpoint(workspaceObj)
-	})
-
 	It("should create a custom template workspace successfully", utils.GinkgoLabelFastCheck, func() {
 		numOfNode := 1
 		imageName := "nginx:latest"
@@ -1295,29 +1119,6 @@ var _ = Describe("Workspace Preset", func() {
 		validateInferenceResource(workspaceObj, int32(numOfNode))
 
 		validateWorkspaceReadiness(workspaceObj)
-	})
-
-	It("should create a Phi-3-mini-128k-instruct workspace with preset public mode successfully", func() {
-		numOfNode := 1
-		workspaceObj := createPhi3WorkspaceWithPresetPublicMode(numOfNode)
-
-		defer cleanupResources(workspaceObj)
-		time.Sleep(30 * time.Second)
-
-		validateCreateNode(workspaceObj, numOfNode)
-		validateResourceStatus(workspaceObj)
-
-		time.Sleep(30 * time.Second)
-
-		validateAssociatedService(workspaceObj)
-		validateInferenceConfig(workspaceObj)
-
-		validateInferenceResource(workspaceObj, int32(numOfNode))
-
-		validateWorkspaceReadiness(workspaceObj)
-
-		validateModelsEndpoint(workspaceObj)
-		validateChatCompletionsEndpoint(workspaceObj)
 	})
 
 	It("should create a gpt-oss-120b workspace with preset public mode successfully", utils.GinkgoLabelA100Required, func() {
@@ -1343,7 +1144,7 @@ var _ = Describe("Workspace Preset", func() {
 		validateChatCompletionsEndpoint(workspaceObj)
 	})
 
-	It("should create a gemma-3-4b-instruct workspace with preset public mode successfully", func() {
+	It("should create a gemma-3-4b-instruct workspace with preset public mode successfully", utils.GinkgoLabelFastCheck, func() {
 		numOfNode := 1
 		workspaceObj := createGemma3_4BInstructWorkspaceWithPresetPublicMode(numOfNode)
 
