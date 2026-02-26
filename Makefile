@@ -127,6 +127,10 @@ generate: controller-gen ## Generate code containing DeepCopy, DeepCopyInto, and
 compare-model-configs: ## Compare supported_models.yaml with ConfigMap template (ignoring comments).
 	@./hack/compare_model_configs.sh
 
+.PHONY: generate-vllm-arch-list
+generate-vllm-arch-list: ## Regenerate presets/workspace/models/vllm_model_arch_list.txt.
+	@./hack/generate_vllm_arch_list.sh
+
 ## --------------------------------------
 ## Unit Tests
 ## --------------------------------------
