@@ -178,7 +178,7 @@ runs:
         
         docker/presets/models/tfs/build_oci_artifact.sh \
           "$MODEL_VERSION_URL" \
-          "$GHCR_USERNAME/$IMAGE_NAME" \
+          "kaito-project/kaito/kaito-$MODEL_NAME" \
           "ghcr.io" \
           "$MODEL_TAG" \
           "$HF_TOKEN"
@@ -212,7 +212,7 @@ runs:
           --build-arg VERSION=$MODEL_TAG \
           --build-arg MODEL_TYPE=$MODEL_TYPE \
           -t $ACR_NAME.azurecr.io/$IMAGE_NAME:$MODEL_TAG \
-          -t ghcr.io/$GHCR_USERNAME/$IMAGE_NAME:$MODEL_TAG \
+          -t ghcr.io/kaito-project/kaito/kaito-$MODEL_NAME:$MODEL_TAG \
           -o type=image,push=true,compression=zstd \
           -f ./docker/presets/models/tfs/Dockerfile .
       shell: bash
