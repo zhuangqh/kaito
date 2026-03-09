@@ -1,7 +1,7 @@
 # Dependencies for TFS
 
 # Core Dependencies
-vllm==0.17.0
+vllm==0.17.1
 transformers[serving] >= 4.57.1, < 5
 huggingface-hub>=0.34.0,<1.0
 torch==2.10.0
