@@ -2,17 +2,19 @@ FROM python:3.12-slim AS dependencies
 
 ARG MODEL_TYPE
 ARG VERSION
+ARG UV_VERSION=0.10.10
 
 # https://docs.ray.io/en/latest/cluster/usage-stats.html
 ENV RAY_USAGE_STATS_ENABLED="1"
 
-RUN pip3 install --upgrade pip uv
+RUN pip3 install --no-cache-dir --upgrade pip && \
+    pip3 install --no-cache-dir "uv==${UV_VERSION}"
 
 # Set the working directory
 WORKDIR /workspace
 
 # Required for torch.compile
-RUN apt-get update -y && \
+RUN apt-get update -y && apt upgrade -y && \
     if dpkg -s libssl3t64 >/dev/null 2>&1; then \
         apt-get install --only-upgrade --no-install-recommends -y openssl libssl3t64 openssl-provider-legacy; \
     elif dpkg -s libssl3 >/dev/null 2>&1; then \
