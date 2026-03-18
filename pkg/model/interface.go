@@ -363,7 +363,7 @@ func (p *PresetParam) buildVLLMInferenceCommand(rc RuntimeContext) []string {
 
 	// Disable kv cache CPU offloading when pipeline parallelism is enabled.
 	// TODO: LMCache doesn't support cross node pp in cpu offload mode.
-	p.VLLM.ModelRunParams["kv-cache-cpu-memory-utilization"] = "0"
+	p.VLLM.ModelRunParams["kaito-kv-cache-cpu-memory-utilization"] = "0"
 
 	// Pipeline Parallelism (PP) is set to the number of nodes for multi-node inference per vLLM guidance:
 	// https://docs.vllm.ai/en/latest/serving/distributed_serving.html.
