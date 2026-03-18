@@ -55,7 +55,8 @@ COPY presets/workspace/inference/vllm/inference_api.py \
 RUN uv venv /opt/guidellm-venv --system-site-packages && \
     uv pip install --python /opt/guidellm-venv/bin/python \
         "guidellm==0.5.3" \
-        "transformers>=5.0.0"
+        "transformers>=5.0.0" && \
+    pip3 uninstall -y uv
 
 RUN VLLM_VERSION=$(grep 'vllm==' /workspace/requirements.txt | cut -d'=' -f3) && \
     curl -o /workspace/vllm/multi-node-serving.sh \
