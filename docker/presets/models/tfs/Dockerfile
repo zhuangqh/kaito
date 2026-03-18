@@ -7,9 +7,6 @@ ARG UV_VERSION=0.10.10
 # https://docs.ray.io/en/latest/cluster/usage-stats.html
 ENV RAY_USAGE_STATS_ENABLED="1"
 
-RUN pip3 install --no-cache-dir --upgrade pip && \
-    pip3 install --no-cache-dir "uv==${UV_VERSION}"
-
 # Set the working directory
 WORKDIR /workspace
 
@@ -28,6 +25,9 @@ RUN apt-get update -y && apt upgrade -y && \
 FROM dependencies AS base
 
 COPY presets/workspace/dependencies/requirements.txt /workspace/requirements.txt
+
+RUN pip3 install --no-cache-dir --upgrade pip && \
+    pip3 install --no-cache-dir "uv==${UV_VERSION}"
 
 RUN --mount=type=cache,target=/root/.cache/pip \
     uv pip install --system -q -r /workspace/requirements.txt
