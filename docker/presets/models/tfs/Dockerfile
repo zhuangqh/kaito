@@ -7,8 +7,7 @@ ARG UV_VERSION=0.10.10
 # https://docs.ray.io/en/latest/cluster/usage-stats.html
 ENV RAY_USAGE_STATS_ENABLED="1"
 
-RUN pip3 install --no-cache-dir --upgrade pip && \
-    pip3 install --no-cache-dir "uv==${UV_VERSION}"
+RUN pip3 install --no-cache-dir --upgrade pip
 
 # Set the working directory
 WORKDIR /workspace
@@ -30,6 +29,7 @@ FROM dependencies AS base
 COPY presets/workspace/dependencies/requirements.txt /workspace/requirements.txt
 
 RUN --mount=type=cache,target=/root/.cache/pip \
+    pip3 install --no-cache-dir "uv==${UV_VERSION}" && \
     uv pip install --system -q -r /workspace/requirements.txt
 
 # 1. Huggingface transformers
@@ -46,6 +46,16 @@ COPY presets/workspace/inference/vllm/inference_api.py \
     presets/workspace/inference/vllm/multi-node-health-check.py \
     presets/workspace/inference/vllm/list_supported_llm_archs.py \
     /workspace/vllm/
+
+# Guidellm runs in an isolated venv so it can use transformers>=5.0.0 (required
+# for Mistral tekken tokenizers and future models) without conflicting with
+# vLLM's transformers<5 requirement.  benchmark_entrypoint.py injects
+# /opt/guidellm-venv/lib/python*/site-packages into sys.path at runtime.
+RUN uv venv /opt/guidellm-venv --system-site-packages && \
+    uv pip install --python /opt/guidellm-venv/bin/python \
+        "guidellm==0.5.3" \
+        "transformers>=5.0.0" && \
+    pip3 uninstall -y uv
 
 RUN VLLM_VERSION=$(grep 'vllm==' /workspace/requirements.txt | cut -d'=' -f3) && \
     curl -o /workspace/vllm/multi-node-serving.sh \
