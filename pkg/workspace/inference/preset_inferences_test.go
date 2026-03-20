@@ -37,6 +37,7 @@ import (
 	"github.com/kaito-project/kaito/pkg/utils/generator"
 	"github.com/kaito-project/kaito/pkg/utils/plugin"
 	"github.com/kaito-project/kaito/pkg/utils/test"
+	estimatorpkg "github.com/kaito-project/kaito/pkg/workspace/estimator"
 	"github.com/kaito-project/kaito/pkg/workspace/estimator/advancednodesestimator"
 	metadata "github.com/kaito-project/kaito/presets/workspace/models"
 )
@@ -284,7 +285,12 @@ func TestGeneratePresetInference(t *testing.T) {
 
 			// Set the Status.Inference.TargetNodeCount for proper node count calculation
 			if workspace.Inference != nil {
-				nodeCount, err := estimator.EstimateNodeCount(t.Context(), workspace, mockClient)
+				req, reqErr := estimatorpkg.NodeEstimateRequestFromWorkspace(t.Context(), workspace, mockClient)
+				if reqErr != nil {
+					t.Errorf("%s: failed to build estimate request: %v", k, reqErr)
+					return
+				}
+				nodeCount, err := estimator.EstimateNodeCount(t.Context(), req, mockClient)
 				if err != nil {
 					t.Errorf("%s: failed to estimate node count: %v", k, err)
 					return
