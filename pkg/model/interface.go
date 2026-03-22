@@ -334,6 +334,15 @@ func (p *PresetParam) buildVLLMInferenceCommand(rc RuntimeContext) []string {
 	}
 	p.VLLM.ModelRunParams["gpu-memory-utilization"] = "0.84"
 
+	// Dynamically determine dtype based on GPU compute capability.
+	// bfloat16 requires CUDA compute capability >= 8.0 (Ampere+).
+	// Fall back to float16 on older GPUs.
+	if rc.GPUConfig != nil && !rc.GPUConfig.SupportsBFloat16() {
+		if dtype, ok := p.VLLM.ModelRunParams["dtype"]; ok && dtype == "bfloat16" {
+			p.VLLM.ModelRunParams["dtype"] = "float16"
+		}
+	}
+
 	if !p.DisableTensorParallelism {
 		// Tensor Parallelism (TP) is set to the number of GPUs on a given node per vLLM guidance:
 		// https://docs.vllm.ai/en/latest/serving/distributed_serving.html.
