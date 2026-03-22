@@ -1,4 +1,4 @@
-FROM python:3.12-slim AS dependencies
+FROM vllm/vllm-openai:v0.17.1 AS dependencies
 
 ARG MODEL_TYPE
 ARG VERSION
@@ -6,8 +6,6 @@ ARG UV_VERSION=0.10.10
 
 # https://docs.ray.io/en/latest/cluster/usage-stats.html
 ENV RAY_USAGE_STATS_ENABLED="1"
-
-RUN pip3 install --no-cache-dir --upgrade pip
 
 # Set the working directory
 WORKDIR /workspace
@@ -29,7 +27,6 @@ FROM dependencies AS base
 COPY presets/workspace/dependencies/requirements.txt /workspace/requirements.txt
 
 RUN --mount=type=cache,target=/root/.cache/pip \
-    pip3 install --no-cache-dir "uv==${UV_VERSION}" && \
     uv pip install --system -q -r /workspace/requirements.txt
 
 # 1. Huggingface transformers
