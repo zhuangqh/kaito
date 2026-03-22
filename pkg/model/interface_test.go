@@ -194,6 +194,59 @@ func TestGetInferenceCommandUnknownRuntime(t *testing.T) {
 	assert.Nil(t, cmd)
 }
 
+func TestGetInferenceCommandVLLMPerformanceMode(t *testing.T) {
+	newPreset := func() *PresetParam {
+		return &PresetParam{
+			RuntimeParam: RuntimeParam{
+				VLLM: VLLMParam{
+					BaseCommand:    "vllm serve",
+					ModelRunParams: map[string]string{},
+				},
+			},
+		}
+	}
+	baseRC := RuntimeContext{
+		RuntimeName:          RuntimeNameVLLM,
+		SKUNumGPUs:           1,
+		NumNodes:             1,
+		DistributedInference: false,
+	}
+
+	t.Run("balanced mode does not set --performance-mode flag", func(t *testing.T) {
+		p := newPreset()
+		rc := baseRC
+		rc.RuntimeContextExtraArguments = RuntimeContextExtraArguments{PerformanceMode: "balanced"}
+		cmd := p.GetInferenceCommand(rc)
+		require.Len(t, cmd, 3)
+		assert.NotContains(t, cmd[2], "performance-mode")
+	})
+
+	t.Run("empty mode does not set --performance-mode flag", func(t *testing.T) {
+		p := newPreset()
+		cmd := p.GetInferenceCommand(baseRC)
+		require.Len(t, cmd, 3)
+		assert.NotContains(t, cmd[2], "performance-mode")
+	})
+
+	t.Run("interactivity mode sets --performance-mode=interactivity", func(t *testing.T) {
+		p := newPreset()
+		rc := baseRC
+		rc.RuntimeContextExtraArguments = RuntimeContextExtraArguments{PerformanceMode: "interactivity"}
+		cmd := p.GetInferenceCommand(rc)
+		require.Len(t, cmd, 3)
+		assert.Contains(t, cmd[2], "performance-mode=interactivity")
+	})
+
+	t.Run("throughput mode sets --performance-mode=throughput", func(t *testing.T) {
+		p := newPreset()
+		rc := baseRC
+		rc.RuntimeContextExtraArguments = RuntimeContextExtraArguments{PerformanceMode: "throughput"}
+		cmd := p.GetInferenceCommand(rc)
+		require.Len(t, cmd, 3)
+		assert.Contains(t, cmd[2], "performance-mode=throughput")
+	})
+}
+
 func TestPresetParamValidate(t *testing.T) {
 	t.Run("vllm with lora disallowed and adapters enabled", func(t *testing.T) {
 		p := &PresetParam{
