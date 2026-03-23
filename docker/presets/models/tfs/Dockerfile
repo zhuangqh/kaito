@@ -10,7 +10,8 @@ ENV RAY_USAGE_STATS_ENABLED="1"
 # Set the working directory
 WORKDIR /workspace
 
-# Required for torch.compile
+# Security updates only – curl, gcc, libc-dev, perl, libglib2.0-0, libgl1,
+# libsm6, libxext6, libxrender1 are already present in the base image.
 RUN apt-get update -y && apt upgrade -y && \
     if dpkg -s libssl3t64 >/dev/null 2>&1; then \
         apt-get install --only-upgrade --no-install-recommends -y openssl libssl3t64 openssl-provider-legacy; \
@@ -19,7 +20,6 @@ RUN apt-get update -y && apt upgrade -y && \
     else \
         apt-get install --only-upgrade --no-install-recommends -y openssl; \
     fi && \
-    apt-get install --no-install-recommends -y curl gcc libc-dev perl libglib2.0-0 libgl1 libsm6 libxext6 libxrender1 && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
 FROM dependencies AS base
@@ -49,10 +49,19 @@ COPY presets/workspace/inference/vllm/inference_api.py \
 # for Mistral tekken tokenizers and future models) without conflicting with
 # vLLM's transformers<5 requirement.  benchmark_entrypoint.py injects
 # /opt/guidellm-venv/lib/python*/site-packages into sys.path at runtime.
+# --no-deps for torch/nvidia/triton: these are already in the base image via
+# --system-site-packages; reinstalling them would add ~6.7 GB to the image.
 RUN uv venv /opt/guidellm-venv --system-site-packages && \
     uv pip install --python /opt/guidellm-venv/bin/python \
+        --no-build-isolation \
         "guidellm==0.5.3" \
-        "transformers>=5.0.0" && \
+        "transformers>=5.0.0" \
+        --no-deps torch --no-deps nvidia-cublas-cu12 --no-deps nvidia-cuda-cupti-cu12 \
+        --no-deps nvidia-cuda-nvrtc-cu12 --no-deps nvidia-cuda-runtime-cu12 \
+        --no-deps nvidia-cudnn-cu12 --no-deps nvidia-cufft-cu12 \
+        --no-deps nvidia-curand-cu12 --no-deps nvidia-cusolver-cu12 \
+        --no-deps nvidia-cusparse-cu12 --no-deps nvidia-nccl-cu12 \
+        --no-deps triton && \
     pip3 uninstall -y uv
 
 RUN VLLM_VERSION=$(grep 'vllm==' /workspace/requirements.txt | cut -d'=' -f3) && \
