@@ -51,8 +51,6 @@ type ResourceProfile struct {
 }
 
 // NodeEstimateRequest holds all inputs needed to estimate the required node count.
-// It abstracts away Kubernetes CRD types, making the interface accessible to third-party callers
-// that do not depend on internal Kaito API types.
 type NodeEstimateRequest struct {
 	// WorkspaceName is used for logging and diagnostics.
 	WorkspaceName string
@@ -66,10 +64,12 @@ type NodeEstimateRequest struct {
 
 // NodesEstimator is an interface for estimating the number of nodes required for an inference workload.
 type NodesEstimator interface {
-	// Name returns the name of the nodes estimator.
+	// Name a human-readable identifier for this estimator implementation.
 	Name() string
 
-	// EstimateNodeCount estimates how many nodes are needed to serve the model described by req.
-	// Reads max-model-len from the ConfigMap named by req.InferenceConfigMapName if provided.
+	// EstimateNodeCount determines the minimum number of nodes required to serve the given model.
+	// It inspects the model, resource, and runtime profiles in req to compute the estimate,
+	// and may query the cluster via client to discover existing node capacity in BYO scenarios.
+	// Returns the estimated node count or an error if the estimation cannot be performed.
 	EstimateNodeCount(ctx context.Context, req NodeEstimateRequest, client client.Client) (int32, error)
 }
