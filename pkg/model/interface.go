@@ -291,6 +291,7 @@ type RuntimeContext struct {
 type RuntimeContextExtraArguments struct {
 	AdaptersEnabled        bool
 	AdapterStrengthEnabled bool
+	PerformanceMode        string // vLLM --performance-mode; defaults to "balanced"
 }
 
 func (p *PresetParam) GetInferenceCommand(rc RuntimeContext) []string {
@@ -348,6 +349,9 @@ func (p *PresetParam) buildVLLMInferenceCommand(rc RuntimeContext) []string {
 	}
 	if rc.ConfigVolume != nil {
 		p.VLLM.ModelRunParams["kaito-config-file"] = path.Join(rc.ConfigVolume.MountPath, ConfigfileNameVLLM)
+	}
+	if rc.PerformanceMode != "" && rc.PerformanceMode != "balanced" {
+		p.VLLM.ModelRunParams["performance-mode"] = rc.PerformanceMode
 	}
 
 	// Parallelism strategy follows a 3-tier hierarchy (see configureParallelism):
