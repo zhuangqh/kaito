@@ -30,7 +30,7 @@ import (
 	"github.com/kaito-project/kaito/pkg/utils/consts"
 	"github.com/kaito-project/kaito/pkg/utils/resources"
 	"github.com/kaito-project/kaito/pkg/utils/test"
-	estimatorpkg "github.com/kaito-project/kaito/pkg/workspace/estimator"
+	workspaceutil "github.com/kaito-project/kaito/pkg/utils/workspace"
 )
 
 func init() {
@@ -230,7 +230,7 @@ func TestBasicNodesEstimator_EstimateNodeCount(t *testing.T) {
 				featuregates.FeatureGates[consts.FeatureFlagDisableNodeAutoProvisioning] = originalValue
 			}()
 
-			req, reqErr := estimatorpkg.NodeEstimateRequestFromWorkspace(ctx, tt.workspace, nil)
+			req, reqErr := workspaceutil.NodeEstimateRequestFromWorkspace(ctx, tt.workspace, nil)
 			require.NoError(t, reqErr)
 			count, err := estimator.EstimateNodeCount(ctx, req, nil)
 
@@ -283,7 +283,7 @@ func TestBasicNodesEstimator_EstimateNodeCount_GPUMemoryCalculation(t *testing.T
 			},
 		}
 
-		req, reqErr := estimatorpkg.NodeEstimateRequestFromWorkspace(ctx, workspace, nil)
+		req, reqErr := workspaceutil.NodeEstimateRequestFromWorkspace(ctx, workspace, nil)
 		require.NoError(t, reqErr)
 		count, err := estimator.EstimateNodeCount(ctx, req, nil)
 		require.NoError(t, err)
@@ -483,7 +483,7 @@ func TestBasicNodesEstimator_EstimateNodeCount_BYO(t *testing.T) {
 				tt.setupMocks(mockClient)
 			}
 
-			req, reqErr := estimatorpkg.NodeEstimateRequestFromWorkspace(ctx, tt.workspace, mockClient)
+			req, reqErr := workspaceutil.NodeEstimateRequestFromWorkspace(ctx, tt.workspace, mockClient)
 			require.NoError(t, reqErr)
 			count, err := estimator.EstimateNodeCount(ctx, req, mockClient)
 
@@ -541,7 +541,7 @@ func TestBasicNodesEstimator_EstimateNodeCount_EdgeCases(t *testing.T) {
 			},
 		}
 
-		req, reqErr := estimatorpkg.NodeEstimateRequestFromWorkspace(ctx, workspace, nil)
+		req, reqErr := workspaceutil.NodeEstimateRequestFromWorkspace(ctx, workspace, nil)
 		require.NoError(t, reqErr)
 		count, err := estimator.EstimateNodeCount(ctx, req, nil)
 		require.NoError(t, err)
@@ -577,7 +577,7 @@ func TestBasicNodesEstimator_EstimateNodeCount_EdgeCases(t *testing.T) {
 			},
 		}
 
-		req, reqErr := estimatorpkg.NodeEstimateRequestFromWorkspace(ctx, workspace, nil)
+		req, reqErr := workspaceutil.NodeEstimateRequestFromWorkspace(ctx, workspace, nil)
 		require.NoError(t, reqErr)
 		count, err := estimator.EstimateNodeCount(ctx, req, nil)
 		require.NoError(t, err)
@@ -614,7 +614,7 @@ func TestBasicNodesEstimator_EstimateNodeCount_EdgeCases(t *testing.T) {
 			},
 		}
 
-		req, reqErr := estimatorpkg.NodeEstimateRequestFromWorkspace(ctx, workspace, nil)
+		req, reqErr := workspaceutil.NodeEstimateRequestFromWorkspace(ctx, workspace, nil)
 		require.NoError(t, reqErr)
 		count, err := estimator.EstimateNodeCount(ctx, req, nil)
 		require.NoError(t, err)

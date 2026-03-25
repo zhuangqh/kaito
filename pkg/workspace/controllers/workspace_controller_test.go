@@ -43,6 +43,7 @@ import (
 	"github.com/kaito-project/kaito/pkg/utils"
 	"github.com/kaito-project/kaito/pkg/utils/consts"
 	"github.com/kaito-project/kaito/pkg/utils/test"
+	workspaceutil "github.com/kaito-project/kaito/pkg/utils/workspace"
 	"github.com/kaito-project/kaito/pkg/workspace/estimator"
 	"github.com/kaito-project/kaito/pkg/workspace/estimator/basicnodesestimator"
 )
@@ -523,7 +524,7 @@ func TestApplyInferenceWithPreset(t *testing.T) {
 
 			t.Setenv("CLOUD_PROVIDER", consts.AzureCloudName)
 			if tc.workspace.Status.TargetNodeCount == 0 {
-				req, reqErr := estimator.NodeEstimateRequestFromWorkspace(t.Context(), &tc.workspace, mockClient)
+				req, reqErr := workspaceutil.NodeEstimateRequestFromWorkspace(t.Context(), &tc.workspace, mockClient)
 				if reqErr != nil {
 					t.Errorf("Failed to build estimate request: %v", reqErr)
 					return

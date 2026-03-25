@@ -46,7 +46,7 @@ func (e *BasicNodesEstimator) EstimateNodeCount(ctx context.Context, req estimat
 		return 1, nil
 	}
 
-	model, err := models.GetModelByNameWithToken(ctx, req.ModelProfile.Name, req.ModelProfile.AccessSecret)
+	model, err := models.GetModelByNameWithToken(ctx, req.ModelProfile.Name, req.ModelProfile.AccessToken)
 	if err != nil {
 		return 0, fmt.Errorf("failed to get model by name: %w", err)
 	}

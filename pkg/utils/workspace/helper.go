@@ -11,7 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package estimator
+package workspace
 
 import (
 	"context"
@@ -23,6 +23,7 @@ import (
 	kaitov1beta1 "github.com/kaito-project/kaito/api/v1beta1"
 	"github.com/kaito-project/kaito/pkg/featuregates"
 	"github.com/kaito-project/kaito/pkg/utils/consts"
+	estimatorpkg "github.com/kaito-project/kaito/pkg/workspace/estimator"
 	"github.com/kaito-project/kaito/presets/workspace/models"
 )
 
@@ -30,10 +31,10 @@ import (
 // It fetches the HuggingFace access token from Kubernetes when ModelAccessSecret is set,
 // so the returned request carries the resolved token value rather than a secret reference.
 // This is a convenience helper for callers that already have a Workspace and a kube client.
-func NodeEstimateRequestFromWorkspace(ctx context.Context, w *kaitov1beta1.Workspace, kubeClient client.Client) (NodeEstimateRequest, error) {
-	req := NodeEstimateRequest{
+func NodeEstimateRequestFromWorkspace(ctx context.Context, w *kaitov1beta1.Workspace, kubeClient client.Client) (estimatorpkg.NodeEstimateRequest, error) {
+	req := estimatorpkg.NodeEstimateRequest{
 		WorkspaceName: w.Name,
-		ResourceProfile: ResourceProfile{
+		ResourceProfile: estimatorpkg.ResourceProfile{
 			InstanceType:                w.Resource.InstanceType,
 			LabelSelector:               w.Resource.LabelSelector,
 			DisableNodeAutoProvisioning: featuregates.FeatureGates[consts.FeatureFlagDisableNodeAutoProvisioning],
@@ -55,12 +56,12 @@ func NodeEstimateRequestFromWorkspace(ctx context.Context, w *kaitov1beta1.Works
 			var err error
 			token, err = models.GetHFTokenFromSecret(ctx, kubeClient, secretName, w.Namespace)
 			if err != nil {
-				return NodeEstimateRequest{}, fmt.Errorf("failed to resolve access token for model %q: %w", name, err)
+				return estimatorpkg.NodeEstimateRequest{}, fmt.Errorf("failed to resolve access token for model %q: %w", name, err)
 			}
 		}
-		req.ModelProfile = ModelProfile{
-			Name:         name,
-			AccessSecret: token,
+		req.ModelProfile = estimatorpkg.ModelProfile{
+			Name:        name,
+			AccessToken: token,
 		}
 	}
 	return req, nil

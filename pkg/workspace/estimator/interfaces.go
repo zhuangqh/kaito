@@ -32,9 +32,9 @@ type RuntimeProfile struct {
 type ModelProfile struct {
 	// Name is the preset model name; an empty string means no preset inference.
 	Name string
-	// AccessSecret is the pre-resolved access token for gated models (e.g. a HuggingFace API token).
+	// AccessToken is the pre-resolved access token for gated models (e.g. a HuggingFace API token).
 	// Pass an empty string for public models that require no authentication.
-	AccessSecret string
+	AccessToken string
 }
 
 // ResourceProfile describes the compute resources available for the workload.

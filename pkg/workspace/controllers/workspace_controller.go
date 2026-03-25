@@ -982,7 +982,7 @@ func (c *WorkspaceReconciler) UpdateWorkspaceTargetNodeCount(ctx context.Context
 	targetNodeCount := int32(1)
 	if wObj.Status.TargetNodeCount == 0 {
 		// Build the estimate request once, outside the status-update closure.
-		req, reqErr := estimator.NodeEstimateRequestFromWorkspace(ctx, wObj, c.Client)
+		req, reqErr := workspace.NodeEstimateRequestFromWorkspace(ctx, wObj, c.Client)
 		if reqErr != nil {
 			return fmt.Errorf("failed to build node estimate request: %w", reqErr)
 		}
