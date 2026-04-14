@@ -184,12 +184,12 @@ Deploy **Phi-4-mini-instruct** on Azure `Standard_NC24ads_A100_v4` nodes (1× A1
 
 Using the default context size (2,048 tokens) for initial estimation:
 
-1. `modelSize = 8 × 1.02 = 8.16 GiB`
+1. `modelSize = 7.15 × 1.02 = 7.29 GiB`
 2. `availablePerGPU = 80 × 0.84 = 67.2 GiB`
 3. `kvCachePerGPU = 2048 × 128 KB / 1 = 0.25 GiB`
 4. `overhead = fixedOverhead + 0.25 GiB`
 5. `memForWeightsPerGPU = 67.2 − overhead ≈ 64.7 GiB`
-6. `minGPUs = ⌊8.16 / 64.7⌋ + 1 = 1`
+6. `minGPUs = ⌊7.29 / 64.7⌋ + 1 = 1`
 7. `minNodes = ⌈1 / 1⌉ = 1`
 
 **Result: 1 node** (1 GPU) is sufficient — the model is small enough to fit easily.
@@ -198,12 +198,12 @@ Using the default context size (2,048 tokens) for initial estimation:
 
 Now compute the longest context window on that 1 GPU:
 
-1. `modelWeightPerGPU = 8.16 GiB` (single GPU, no distribution)
+1. `modelWeightPerGPU = 7.29 GiB` (single GPU, no distribution)
 2. `availablePerGPU = 67.2 GiB`
-3. `remainingPerGPU = 67.2 − 8.16 − fixedOverhead ≈ 56.7 GiB`
+3. `remainingPerGPU = 67.2 − 7.29 − fixedOverhead ≈ 57.61 GiB`
 4. `adjustedBytesPerToken = 128 KB` (single GPU)
-5. `rawCandidate = 56.7 GiB / 128 KB ≈ 453,000 tokens`
-6. Clamp to model limit: `min(453000, 131072) = 131,072`
+5. `rawCandidate = 57.61 GiB / 128 KB ≈ 471941 tokens`
+6. Clamp to model limit: `min(471941, 131072) = 131,072`
 7. Align to 256: `131,072` (already aligned)
 
 **Result: vLLM launches with `--max-model-len 131072`** — the full 128K context the model architecture supports.
