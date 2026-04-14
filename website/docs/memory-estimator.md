@@ -174,7 +174,7 @@ Deploy **Phi-4-mini-instruct** on Azure `Standard_NC24ads_A100_v4` nodes (1× A1
 
 | Parameter | Value |
 |-----------|-------|
-| Model weight size (`model_file_size_gb`) | 8 GiB |
+| Model weight size (`model_file_size_gb`) | 7.15 GiB |
 | `bytes_per_token` | 131,072 bytes (128 KB) |
 | `model_token_limit` | 131,072 tokens (128K) |
 | GPUs per node | 1 |
