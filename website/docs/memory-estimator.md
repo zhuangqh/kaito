@@ -58,7 +58,7 @@ BytesPerToken = 2 × numLayers × numKVHeads × headDim × dtypeSize
 
 | Factor | Meaning |
 |--------|---------|
-| 2 | One **K**ey tensor + one **V**alue tensor per layer |
+| 2 | One **Key** tensor + one **Value** tensor per layer |
 | numLayers | Number of transformer layers |
 | numKVHeads | Key-value attention heads (may be fewer than query heads in GQA/MQA) |
 | headDim | Per-head dimension (`hidden_size / num_attention_heads`) |
