@@ -30,7 +30,7 @@ COPY presets/workspace/dependencies/requirements.txt /workspace/requirements.txt
 
 RUN --mount=type=cache,target=/root/.cache/pip \
     pip3 install --no-cache-dir "uv==${UV_VERSION}" && \
-    uv pip install --system -q -r /workspace/requirements.txt \
+    uv pip install --system -q -r /workspace/requirements.txt && \
     pip3 uninstall -y uv
 
 # 1. Huggingface transformers
