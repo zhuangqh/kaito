@@ -29,6 +29,7 @@ def _sse_streaming_response(chunks):
     """Wrap a list of SSE chunk strings as a StreamingResponse."""
     return StreamingResponse(iter(chunks), media_type="text/event-stream")
 
+
 # Get the parent directory of the current file
 parent_dir = str(Path(__file__).resolve().parent.parent)
 # Add the parent directory to sys.path
