@@ -29,9 +29,8 @@ from transformers import (
     TrainerCallback,
     TrainerControl,
     TrainerState,
-    TrainingArguments,
 )
-from trl import SFTTrainer
+from trl import SFTConfig, SFTTrainer
 
 # Initialize logger
 logger = logging.getLogger(__name__)
@@ -48,7 +47,7 @@ parsed_configs = parse_configs(CONFIG_YAML)
 model_config: ModelConfig = parsed_configs.get("ModelConfig")
 bnb_config: BitsAndBytesConfig = parsed_configs.get("QuantizationConfig")
 ext_lora_config: ExtLoraConfig = parsed_configs.get("LoraConfig")
-ta_args: TrainingArguments = parsed_configs.get("TrainingArguments")
+ta_args: SFTConfig = parsed_configs.get("TrainingArguments")
 ds_config: DatasetConfig = parsed_configs.get("DatasetConfig")
 dc_args: ExtDataCollator = parsed_configs.get("DataCollator")
 
@@ -129,6 +128,8 @@ class EmptyCacheCallback(TrainerCallback):
 
 empty_cache_callback = EmptyCacheCallback()
 
+ta_args.dataset_text_field = dm.dataset_text_field
+
 # Prepare for training
 torch.cuda.set_device(accelerator.process_index)
 torch.cuda.empty_cache()
@@ -136,12 +137,11 @@ torch.cuda.empty_cache()
 trainer: SFTTrainer = accelerator.prepare(
     SFTTrainer(
         model=model,
-        tokenizer=tokenizer,
+        processing_class=tokenizer,
         train_dataset=train_dataset,
         eval_dataset=eval_dataset,
         args=ta_args,
         data_collator=dc_args,
-        dataset_text_field=dm.dataset_text_field,
         callbacks=[empty_cache_callback],
         # metrics = "tensorboard" or "wandb" # TODO
     )
