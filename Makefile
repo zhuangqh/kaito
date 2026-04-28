@@ -173,7 +173,7 @@ inference-api-e2e: ## Run inference API e2e tests with pytest.
 	pytest --cov -o log_cli=true -o log_cli_level=INFO presets/workspace/generator/
 
 # Ginkgo configurations
-GINKGO_FOCUS ?=
+GINKGO_FOCUS ?= should create a workspace for tuning successfully, and update the workspace with another dataset and output image
 GINKGO_SKIP ?=
 GINKGO_LABEL ?= !A100Required && !AzureLinux
 GINKGO_NODES ?= 2
