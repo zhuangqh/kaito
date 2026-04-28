@@ -548,6 +548,7 @@ func validateRevision(workspaceObj *kaitov1beta1.Workspace, revisionStr string) 
 // validateTuningResource validates tuning deployment
 func validateTuningResource(workspaceObj *kaitov1beta1.Workspace) {
 	By("Checking the tuning resource", func() {
+		tuningLogsDumped := false
 		Eventually(func() bool {
 			var err error
 			var jobFailed, jobSucceeded int32
@@ -573,6 +574,35 @@ func validateTuningResource(workspaceObj *kaitov1beta1.Workspace) {
 
 			if jobFailed > 0 {
 				GinkgoWriter.Printf("Job '%s' is in a failed state.\n", workspaceObj.Name)
+				// Dump pod logs once for debugging (not on every poll)
+				if !tuningLogsDumped {
+					tuningLogsDumped = true
+					if coreClient, cerr := utils.GetK8sClientset(); cerr == nil {
+						pods, perr := coreClient.CoreV1().Pods(workspaceObj.Namespace).List(ctx, metav1.ListOptions{
+							LabelSelector: fmt.Sprintf("job-name=%s", workspaceObj.Name),
+						})
+						if perr == nil {
+							for _, pod := range pods.Items {
+								for _, cs := range pod.Status.ContainerStatuses {
+									if cs.State.Terminated != nil {
+										GinkgoWriter.Printf("Container '%s' terminated: reason=%s, exitCode=%d\n",
+											cs.Name, cs.State.Terminated.Reason, cs.State.Terminated.ExitCode)
+									}
+								}
+								for _, c := range pod.Spec.Containers {
+									logs, lerr := utils.GetPodLogs(coreClient, workspaceObj.Namespace, pod.Name, c.Name)
+									if lerr == nil {
+										GinkgoWriter.Printf("=== Pod %s container %s logs ===\n%s\n=== End logs ===\n", pod.Name, c.Name, logs)
+									} else {
+										GinkgoWriter.Printf("Failed to get logs for pod %s container %s: %v\n", pod.Name, c.Name, lerr)
+									}
+								}
+							}
+						} else {
+							GinkgoWriter.Printf("Failed to list pods for job %s: %v\n", workspaceObj.Name, perr)
+						}
+					}
+				}
 				return false
 			}
 
