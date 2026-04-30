@@ -173,13 +173,13 @@ inference-api-e2e: ## Run inference API e2e tests with pytest.
 	pytest --cov -o log_cli=true -o log_cli_level=INFO presets/workspace/generator/
 
 # Ginkgo configurations
-GINKGO_FOCUS ?= should create a workspace for tuning successfully, and update the workspace with another dataset and output image
+GINKGO_FOCUS ?=
 GINKGO_SKIP ?=
 GINKGO_LABEL ?= !A100Required && !AzureLinux
 GINKGO_NODES ?= 2
 GINKGO_NO_COLOR ?= false
 GINKGO_TIMEOUT ?= 120m
-GINKGO_ARGS ?= --label-filter="$(GINKGO_LABEL)" -focus="$(GINKGO_FOCUS)" -skip="$(GINKGO_SKIP)" -nodes=$(GINKGO_NODES) -no-color=$(GINKGO_NO_COLOR) -timeout=$(GINKGO_TIMEOUT) 
+GINKGO_ARGS ?= --label-filter="$(GINKGO_LABEL)" -focus="$(GINKGO_FOCUS)" -skip="$(GINKGO_SKIP)" -nodes=$(GINKGO_NODES) -no-color=$(GINKGO_NO_COLOR) -timeout=$(GINKGO_TIMEOUT) --fail-fast
 
 .PHONY: $(E2E_TEST)
 $(E2E_TEST): ## Build the e2e test binary without running it.
