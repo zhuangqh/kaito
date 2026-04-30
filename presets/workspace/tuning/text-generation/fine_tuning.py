@@ -17,7 +17,7 @@ from dataclasses import asdict
 from datetime import datetime
 
 import torch
-from accelerate import Accelerator
+from accelerate import PartialState
 from cli import DatasetConfig, ExtDataCollator, ExtLoraConfig, ModelConfig
 from dataset import DatasetManager
 from parser import load_chat_template, parse_configs
@@ -51,13 +51,18 @@ ta_args: SFTConfig = parsed_configs.get("TrainingArguments")
 ds_config: DatasetConfig = parsed_configs.get("DatasetConfig")
 dc_args: ExtDataCollator = parsed_configs.get("DataCollator")
 
-accelerator = Accelerator()
+# Use PartialState here instead of Accelerator() so we don't pre-initialize
+# the global AcceleratorState. The Trainer/SFTTrainer creates its own
+# Accelerator with mixed_precision derived from TrainingArguments (e.g. bf16),
+# and transformers>=5 will raise if AcceleratorState was already initialized
+# with different settings.
+dist_state = PartialState()
 
 # Load Model Args
 model_args = model_config.get_model_args()
-if accelerator.distributed_type != "NO":  # Meaning we require distributed training
+if dist_state.distributed_type != "NO":  # Meaning we require distributed training
     logger.debug("Setting device map for distributed training")
-    model_args["device_map"] = {"": accelerator.process_index}
+    model_args["device_map"] = {"": dist_state.process_index}
 
 # Load BitsAndBytesConfig
 bnb_config_args = asdict(bnb_config)
@@ -131,20 +136,20 @@ empty_cache_callback = EmptyCacheCallback()
 ta_args.dataset_text_field = dm.dataset_text_field
 
 # Prepare for training
-torch.cuda.set_device(accelerator.process_index)
+torch.cuda.set_device(dist_state.process_index)
 torch.cuda.empty_cache()
-# Training the Model
-trainer: SFTTrainer = accelerator.prepare(
-    SFTTrainer(
-        model=model,
-        processing_class=tokenizer,
-        train_dataset=train_dataset,
-        eval_dataset=eval_dataset,
-        args=ta_args,
-        data_collator=dc_args,
-        callbacks=[empty_cache_callback],
-        # metrics = "tensorboard" or "wandb" # TODO
-    )
+# Training the Model. SFTTrainer/Trainer internally creates and manages its
+# own Accelerator (including mixed_precision and prepare()), so we must not
+# wrap it with accelerator.prepare() ourselves.
+trainer = SFTTrainer(
+    model=model,
+    processing_class=tokenizer,
+    train_dataset=train_dataset,
+    eval_dataset=eval_dataset,
+    args=ta_args,
+    data_collator=dc_args,
+    callbacks=[empty_cache_callback],
+    # metrics = "tensorboard" or "wandb" # TODO
 )
 trainer.train()
 os.makedirs(ta_args.output_dir, exist_ok=True)
