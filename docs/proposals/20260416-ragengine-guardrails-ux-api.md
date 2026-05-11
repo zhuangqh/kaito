@@ -87,8 +87,30 @@ in ConfigMap YAML, not in the CRD.
 
 ### Default ConfigMap Support
 
-Follow-up implementation may provide a default ConfigMap and default mount path so that
-guardrail policy can be enabled without introducing a broad CRD surface in the same step.
+If `spec.guardrails.enabled` is `true` and `configMapRef` is not set, the
+controller copies the default guardrails policy ConfigMap
+(`ragengine-guardrails-policy-template`) into the RAGEngine namespace and mounts
+it into the Pod.
+
+- Auto-copied ConfigMaps are namespace-scoped shared resources and do not carry
+  an `OwnerReference` to any individual RAGEngine. This avoids deleting a
+  shared ConfigMap during cleanup of one RAGEngine while other RAGEngines in the
+  same namespace still depend on it.
+- User-provided ConfigMaps are not modified or owned by the controller.
+- Hot reload is not part of this PR.
+
+The default template provides a conservative baseline of regex scanners for
+obvious credential leakage, including:
+
+- PEM private key headers
+- AWS access key IDs (`AKIA...`)
+- Google API keys (`AIza...`)
+- GitHub tokens (`ghp_`, `gho_`, `ghu_`, `ghs_`, `ghr_`)
+- `sk-...` style API keys
+- `Bearer ...` authorization tokens
+
+This is baseline protection, not a complete content-safety policy. Broader
+scanners can still be added via a custom ConfigMap.
 
 ### Runtime Failure Semantics
 
@@ -159,7 +181,6 @@ This proposal defines the UX shape only. The following items are deferred to fol
 implementation PRs:
 
 - YAML policy loading implementation
-- default ConfigMap wiring
 - scanner registry and additional scanners
 - audit event model
 - streaming scanning behavior
@@ -174,7 +195,7 @@ This proposal is intended to support the following implementation sequence:
   behavior plus `OutputGuardrailsError → HTTP 500`; configurable failure handling is
   deferred.)*
 3. Introduce a runtime YAML policy loader.
-4. Add default ConfigMap support.
+4. Add default ConfigMap support. (done — see "Default ConfigMap Support" above)
 5. Refactor scanner construction into a registry/factory structure.
 6. Add more scanners in small batches.
 7. Add audit foundations.
