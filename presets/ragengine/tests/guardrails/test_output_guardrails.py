@@ -31,7 +31,9 @@ from ragengine.guardrails.output_guardrails import (
 )
 from ragengine.guardrails.scanner_schemas import (
     BanSubstringsConfig,
+    JSONConfig,
     ParsedScannerConfig,
+    ReadingTimeConfig,
     RegexConfig,
     SecretsConfig,
     SensitiveConfig,
@@ -73,6 +75,24 @@ def _ban_subs_cfg(
         type="ban_substrings",
         action_on_hit=action_on_hit,
         config=BanSubstringsConfig(substrings=list(substrings), **kw),
+    )
+
+
+def _json_cfg(required_elements=0, action_on_hit="redact", **kw) -> ParsedScannerConfig:
+    return ParsedScannerConfig(
+        type="json",
+        action_on_hit=action_on_hit,
+        config=JSONConfig(required_elements=required_elements, **kw),
+    )
+
+
+def _reading_time_cfg(
+    max_time=0.5, action_on_hit="redact", **kw
+) -> ParsedScannerConfig:
+    return ParsedScannerConfig(
+        type="reading_time",
+        action_on_hit=action_on_hit,
+        config=ReadingTimeConfig(max_time=max_time, **kw),
     )
 
 
@@ -178,6 +198,16 @@ def fake_llm_guard_scanners(monkeypatch):
             self.contains_all = contains_all
             self.redact = redact
 
+    class FakeJSON:
+        def __init__(self, *, required_elements=0, repair=True):
+            self.required_elements = required_elements
+            self.repair = repair
+
+    class FakeReadingTime:
+        def __init__(self, max_time, *, truncate=False):
+            self.max_time = max_time
+            self.truncate = truncate
+
     monkeypatch.setattr(
         scanner_schemas_module.llm_guard_output_scanners,
         "Regex",
@@ -190,7 +220,19 @@ def fake_llm_guard_scanners(monkeypatch):
         FakeBanSubstrings,
         raising=False,
     )
-    return FakeRegex, FakeBanSubstrings
+    monkeypatch.setattr(
+        scanner_schemas_module.llm_guard_output_scanners,
+        "JSON",
+        FakeJSON,
+        raising=False,
+    )
+    monkeypatch.setattr(
+        scanner_schemas_module.llm_guard_output_scanners,
+        "ReadingTime",
+        FakeReadingTime,
+        raising=False,
+    )
+    return FakeRegex, FakeBanSubstrings, FakeJSON, FakeReadingTime
 
 
 # ---------------------------------------------------------------------------
@@ -464,6 +506,34 @@ def test_from_config_skips_invalid_scanners_and_filters_non_string_values(
     assert scanners[1].redact is True
 
 
+def test_from_config_loads_json_and_reading_time_scanners(tmp_path, monkeypatch):
+    # ReadingTime expects minutes, so 0.25 means 15 seconds.
+    fifteen_seconds_in_minutes = 0.25
+    policy = """
+    action: redact
+    scanners:
+      - type: json
+        required_elements: 1
+        repair: false
+      - type: reading_time
+        max_time: 0.25
+        truncate: true
+    """
+
+    _write_policy(
+        tmp_path,
+        monkeypatch,
+        policy,
+    )
+
+    guardrails = OutputGuardrails.from_config()
+
+    assert guardrails.scanner_configs == (
+        _json_cfg(required_elements=1, repair=False),
+        _reading_time_cfg(max_time=fifteen_seconds_in_minutes, truncate=True),
+    )
+
+
 def test_from_config_with_empty_policy_path_keeps_defaults(monkeypatch):
     monkeypatch.setattr(config, "OUTPUT_GUARDRAILS_ENABLED", True)
     monkeypatch.setattr(config, "OUTPUT_GUARDRAILS_POLICY_PATH", "")
@@ -607,13 +677,41 @@ def test_parse_policy_scanner_configs_rejects_non_bool_flags():
             {"type": "ban_substrings", "substrings": ["a"], "case_sensitive": "false"},
             {"type": "ban_substrings", "substrings": ["a"], "contains_all": 1},
             {"type": "regex", "patterns": ["a"], "is_blocked": "no"},
+            {"type": "json", "repair": "yes"},
+            {"type": "reading_time", "max_time": 0.5, "truncate": "no"},
             # Native YAML booleans (already parsed to Python bool) are accepted.
             {"type": "ban_substrings", "substrings": ["a"], "case_sensitive": True},
+            {"type": "json", "repair": True},
+            {"type": "reading_time", "max_time": 0.5, "truncate": True},
         ],
         "guardrails.yaml",
     )
 
-    assert parsed == (_ban_subs_cfg(substrings=["a"], case_sensitive=True),)
+    assert parsed == (
+        _ban_subs_cfg(substrings=["a"], case_sensitive=True),
+        _json_cfg(repair=True),
+        _reading_time_cfg(max_time=0.5, truncate=True),
+    )
+
+
+def test_parse_policy_scanner_configs_rejects_invalid_json_and_reading_time_values():
+    parsed = output_guardrails_module._parse_policy_scanner_configs(
+        [
+            {"type": "json", "required_elements": -1},
+            {"type": "json", "required_elements": 1.5},
+            {"type": "reading_time", "max_time": 0},
+            {"type": "reading_time", "max_time": -0.1},
+            {"type": "reading_time", "max_time": "fast"},
+            {"type": "json", "required_elements": 2, "repair": False},
+            {"type": "reading_time", "max_time": 0.1, "truncate": False},
+        ],
+        "guardrails.yaml",
+    )
+
+    assert parsed == (
+        _json_cfg(required_elements=2, repair=False),
+        _reading_time_cfg(max_time=0.1, truncate=False),
+    )
 
 
 def test_parse_policy_scanner_configs_accepts_secrets_and_sensitive():
@@ -703,7 +801,7 @@ def test_parse_policy_scanner_configs_allows_non_redact_scanners_for_block(
 def test_build_scanners_supports_normalized_ban_substrings_type(
     fake_llm_guard_scanners,
 ):
-    _, FakeBanSubstrings = fake_llm_guard_scanners
+    _, FakeBanSubstrings, _, _ = fake_llm_guard_scanners
 
     parsed = output_guardrails_module._parse_policy_scanner_configs(
         [{"type": "ban-substrings", "substrings": ["secret"]}],
@@ -741,6 +839,28 @@ def test_build_scanners_uses_per_scanner_action(fake_llm_guard_scanners):
 
     assert scanners[0].redact is True
     assert scanners[1].redact is False
+
+
+def test_build_scanners_builds_json_and_reading_time(fake_llm_guard_scanners):
+    _, _, FakeJSON, FakeReadingTime = fake_llm_guard_scanners
+
+    guardrails = OutputGuardrails(
+        enabled=True,
+        scanner_configs=(
+            _json_cfg(required_elements=2, repair=False),
+            _reading_time_cfg(max_time=0.25, truncate=True),
+        ),
+    )
+
+    scanners = guardrails._build_scanners()
+
+    assert len(scanners) == 2
+    assert isinstance(scanners[0], FakeJSON)
+    assert scanners[0].required_elements == 2
+    assert scanners[0].repair is False
+    assert isinstance(scanners[1], FakeReadingTime)
+    assert scanners[1].max_time == 0.25
+    assert scanners[1].truncate is True
 
 
 def test_build_scanners_supports_secrets_type(monkeypatch):
@@ -1022,6 +1142,183 @@ def test_guard_response_applies_action(
         )
         == response_before + 1
     )
+
+
+def test_guard_response_preserves_truncated_output_for_reading_time(monkeypatch):
+    _patch_scan_output(
+        monkeypatch,
+        lambda scanners, prompt, output, fail_fast: (
+            "one two three",
+            {"reading_time": False},
+            {"reading_time": 1.0},
+        ),
+    )
+
+    guardrails = OutputGuardrails(
+        enabled=True,
+        action_on_hit="redact",
+        scanner_configs=(_reading_time_cfg(max_time=0.01, truncate=True),),
+    )
+
+    out = guardrails.guard_response(
+        _make_response("one two three four five six"), {"messages": []}
+    )
+    assert out.choices[0].message.content == "one two three"
+
+
+def test_guard_response_with_real_json_scanner_blocks_invalid_output(
+    tmp_path, monkeypatch
+):
+    _write_policy(
+        tmp_path,
+        monkeypatch,
+        """
+        action: block
+        blockMessage: invalid-json
+        scanners:
+          - type: json
+            required_elements: 1
+            repair: false
+        """,
+    )
+
+    guardrails = OutputGuardrails.from_config()
+
+    out = guardrails.guard_response(_make_response("plain text only"), {"messages": []})
+
+    assert out.choices[0].message.content == "invalid-json"
+
+
+def test_guard_response_with_real_json_scanner_allows_valid_output(
+    tmp_path, monkeypatch
+):
+    _write_policy(
+        tmp_path,
+        monkeypatch,
+        """
+        action: block
+        blockMessage: invalid-json
+        scanners:
+          - type: json
+            required_elements: 1
+            repair: false
+        """,
+    )
+
+    guardrails = OutputGuardrails.from_config()
+
+    out = guardrails.guard_response(
+        _make_response('{"a": 1, "b": [true, false], "c": "ok"}'),
+        {"messages": []},
+    )
+
+    assert out.choices[0].message.content == '{"a": 1, "b": [true, false], "c": "ok"}'
+
+
+def test_guard_response_with_real_json_scanner_repair_true_keeps_simple_malformed_json(
+    tmp_path, monkeypatch
+):
+    _write_policy(
+        tmp_path,
+        monkeypatch,
+        """
+        action: block
+        blockMessage: invalid-json
+        scanners:
+          - type: json
+                        required_elements: 0
+            repair: true
+        """,
+    )
+
+    guardrails = OutputGuardrails.from_config()
+
+    out = guardrails.guard_response(_make_response('{"a": 1, "b": 2'), {"messages": []})
+
+    assert out.choices[0].message.content == '{"a": 1, "b": 2'
+
+
+def test_guard_response_with_real_reading_time_scanner_truncates_output(
+    tmp_path, monkeypatch
+):
+    _write_policy(
+        tmp_path,
+        monkeypatch,
+        """
+        action: redact
+        scanners:
+          - type: reading_time
+            max_time: 0.01
+            truncate: true
+        """,
+    )
+
+    guardrails = OutputGuardrails.from_config()
+
+    out = guardrails.guard_response(
+        _make_response("one two three four five six"), {"messages": []}
+    )
+
+    assert out.choices[0].message.content == "one two"
+
+
+def test_guard_response_with_real_reading_time_scanner_allows_exact_threshold_output(
+    tmp_path, monkeypatch
+):
+    _write_policy(
+        tmp_path,
+        monkeypatch,
+        """
+        action: block
+        blockMessage: too-long
+        scanners:
+          - type: reading_time
+            max_time: 0.05
+            truncate: false
+        """,
+    )
+
+    guardrails = OutputGuardrails.from_config()
+
+    out = guardrails.guard_response(
+        _make_response("One two three four five six seven eight nine ten."),
+        {"messages": []},
+    )
+
+    assert (
+        out.choices[0].message.content
+        == "One two three four five six seven eight nine ten."
+    )
+
+
+def test_guard_response_applies_mixed_scanner_actions_in_order(monkeypatch):
+    call_outputs = iter(
+        [
+            ("REDACTED-CONTENT", {"regex": False}, {"regex": 0.9}),
+            (
+                "REDACTED-CONTENT",
+                {"ban_substrings": True},
+                {"ban_substrings": 0.0},
+            ),
+        ]
+    )
+
+    def _scan_output(scanners, prompt, output, fail_fast):
+        return next(call_outputs)
+
+    _patch_scan_output(monkeypatch, _scan_output)
+
+    guardrails = OutputGuardrails(
+        enabled=True,
+        block_message="blocked!",
+        scanner_configs=(
+            _regex_cfg(patterns=[r"\S+"], action_on_hit="redact"),
+            _ban_subs_cfg(substrings=["secret"], action_on_hit="block"),
+        ),
+    )
+
+    out = guardrails.guard_response(_make_response("dirty"), {"messages": []})
+    assert out.choices[0].message.content == "REDACTED-CONTENT"
 
 
 def test_guard_response_increments_hit_metric(monkeypatch):
