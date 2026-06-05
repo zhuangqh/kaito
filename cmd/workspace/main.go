@@ -52,6 +52,7 @@ import (
 	"github.com/kaito-project/kaito/pkg/featuregates"
 	"github.com/kaito-project/kaito/pkg/inferenceset"
 	"github.com/kaito-project/kaito/pkg/k8sclient"
+	mmcontrollers "github.com/kaito-project/kaito/pkg/modelmirror/controllers"
 	nodeprovisionmanager "github.com/kaito-project/kaito/pkg/nodeprovision/manager"
 	"github.com/kaito-project/kaito/pkg/sku"
 	"github.com/kaito-project/kaito/pkg/utils/consts"
@@ -107,6 +108,8 @@ func main() {
 	var kubeClientQPS int = 30
 	var kubeClientBurst int = 50
 	var printVersionAndExit bool
+	var defaultModelMirrorStorageClass string
+	var defaultStreamingServiceAccount string
 	flag.StringVar(&metricsAddr, "metrics-bind-address", ":8080", "The address the metric endpoint binds to.")
 	flag.StringVar(&probeAddr, "health-probe-bind-address", ":8081", "The address the probe endpoint binds to.")
 	flag.IntVar(&kubeClientQPS, "kube-client-qps", kubeClientQPS, "the rate of qps to kube-apiserver.")
@@ -124,6 +127,8 @@ func main() {
 	flag.StringVar(&karpenterNodeClassVersion, "karpenter-node-class-version", "v1beta1", "Karpenter NodeClass API version. Only used when node-provisioner=karpenter.")
 	flag.StringVar(&karpenterNodeClassResourceName, "karpenter-node-class-resource-name", "aksnodeclasses", "Plural resource name for the NodeClass CRD (e.g. aksnodeclasses). Combined with --karpenter-node-class-group to form the full CRD name. Only used when node-provisioner=karpenter.")
 	flag.BoolVar(&printVersionAndExit, "version", false, "Print version and exit.")
+	flag.StringVar(&defaultModelMirrorStorageClass, "default-model-mirror-storage-class", "", "StorageClass for ModelMirror PVCs (required when ModelStreaming=true).")
+	flag.StringVar(&defaultStreamingServiceAccount, "default-streaming-service-account", "", "Default ServiceAccount for streaming inference pods.")
 	opts := zap.Options{
 		Development: true,
 	}
@@ -147,6 +152,13 @@ func main() {
 		exitWithErrorFunc()
 	}
 	sku.DefaultSKUHandler = skuHandler
+
+	// ModelStreaming requires ModelMirror
+	if featuregates.FeatureGates[consts.FeatureFlagModelStreaming] && !featuregates.FeatureGates[consts.FeatureFlagModelMirror] {
+		klog.ErrorS(fmt.Errorf("ModelStreaming feature gate requires ModelMirror to be enabled"),
+			"set --feature-gates=ModelMirror=true,ModelStreaming=true")
+		exitWithErrorFunc()
+	}
 
 	// Expose the resolved provisioner type for downstream scheduling logic.
 	consts.ActiveNodeProvisioner = nodeProvisionerType
@@ -302,6 +314,18 @@ func main() {
 		)
 		if err = mriReconciler.SetupWithManager(mgr); err != nil {
 			klog.ErrorS(err, "unable to create controller", "controller", "MultiRoleInference")
+			exitWithErrorFunc()
+		}
+	}
+
+	// ModelMirror controller — requires ModelMirror feature gate.
+	if featuregates.FeatureGates[consts.FeatureFlagModelMirror] {
+		mmReconciler := mmcontrollers.NewModelMirrorReconciler(
+			kClient,
+			log.Log.WithName("controllers").WithName("ModelMirror"),
+		)
+		if err = mmReconciler.SetupWithManager(mgr); err != nil {
+			klog.ErrorS(err, "unable to create controller", "controller", "ModelMirror")
 			exitWithErrorFunc()
 		}
 	}
