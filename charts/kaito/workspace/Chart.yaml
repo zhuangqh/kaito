@@ -48,4 +48,4 @@ dependencies:
 - name: productionstack
   version: "0.2.0"
   repository: oci://mcr.microsoft.com/aks/kaito/helm
-  condition: featureGates.productionStack
+  condition: productionstack.enabled
