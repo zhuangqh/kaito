@@ -299,7 +299,8 @@ type RuntimeContext struct {
 	NumNodes             int
 	WorkspaceMetadata    metav1.ObjectMeta
 	DistributedInference bool
-	MaxModelLen          int // max-model-len parameter for vLLM
+	MaxModelLen          int   // max-model-len parameter for vLLM
+	InferencePort        int32 // port vLLM listens on; 0 means default (5000)
 	RuntimeContextExtraArguments
 }
 
@@ -350,21 +351,23 @@ func (p *PresetParam) buildHuggingfaceInferenceCommand() []string {
 }
 
 func (p *PresetParam) buildVLLMInferenceCommand(rc RuntimeContext) []string {
-	// For InferenceSet-managed workspaces, determine the served-model-name:
-	// - MRI workspaces (have multiroleinference.kaito.sh/created-by label): use VLLM.ModelName
-	//   so all roles share a single model identifier for EPP routing.
-	// - Standalone InferenceSet workspaces: use the InferenceSet name (label value)
-	//   so EPP routes requests by InferenceSet identity.
-	// - Fallback: use VLLM.ModelName if available.
-	if isName, ok := rc.WorkspaceMetadata.Labels[consts.WorkspaceCreatedByInferenceSetLabel]; ok && isName != "" {
-		// Note: string literal used to avoid import cycle with api/v1alpha1 package.
-		// Matches v1alpha1.LabelMultiRoleInferenceParent.
-		if _, isMRI := rc.WorkspaceMetadata.Labels["multiroleinference.kaito.sh/created-by"]; isMRI && p.VLLM.ModelName != "" {
-			p.VLLM.ModelRunParams["served-model-name"] = p.VLLM.ModelName
-		} else {
-			p.VLLM.ModelRunParams["served-model-name"] = isName
-		}
-	} else if p.VLLM.ModelName != "" {
+	// Determine served-model-name priority:
+	// 1. MRI workspaces: use VLLM.ModelName so all roles share a single model
+	//    identifier for EPP routing.
+	// 2. Standalone InferenceSet workspaces: use the InferenceSet name.
+	// 3. Fallback: use VLLM.ModelName if available.
+	//
+	// Note: string literal used to avoid import cycle with api/v1alpha1 package.
+	// Matches v1alpha1.LabelMultiRoleInferenceParent.
+	_, isMRI := rc.WorkspaceMetadata.Labels["multiroleinference.kaito.sh/created-by"]
+	isName := rc.WorkspaceMetadata.Labels[consts.WorkspaceCreatedByInferenceSetLabel]
+
+	switch {
+	case isMRI && p.VLLM.ModelName != "":
+		p.VLLM.ModelRunParams["served-model-name"] = p.VLLM.ModelName
+	case isName != "":
+		p.VLLM.ModelRunParams["served-model-name"] = isName
+	case p.VLLM.ModelName != "":
 		p.VLLM.ModelRunParams["served-model-name"] = p.VLLM.ModelName
 	}
 	if rc.MaxModelLen > 0 {
@@ -428,6 +431,12 @@ func (p *PresetParam) buildVLLMInferenceCommand(rc RuntimeContext) []string {
 	//  2. Tensor Parallelism (TP) – model fits on a single node (multiple GPUs)
 	//  3. Pipeline Parallelism (PP) + TP – model requires multiple nodes
 	p.configureParallelism(rc)
+
+	// Set explicit port if specified (e.g., decode pods use 5001 to make room
+	// for the routing sidecar on 5000).
+	if rc.InferencePort > 0 {
+		p.VLLM.ModelRunParams["port"] = strconv.Itoa(int(rc.InferencePort))
+	}
 
 	// Distributed streaming: only set when streaming is active AND tensor-parallel-size > 1.
 	// This must happen AFTER configureParallelism, which resolves the actual TP value.
