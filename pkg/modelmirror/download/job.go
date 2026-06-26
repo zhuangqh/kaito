@@ -27,7 +27,8 @@ import (
 )
 
 // BuildDownloadJob constructs the Job that downloads model files to the PVC.
-func BuildDownloadJob(cr *kaitov1alpha1.ModelMirror) *batchv1.Job {
+// resources sets the CPU/memory request==limit on the downloader container.
+func BuildDownloadJob(cr *kaitov1alpha1.ModelMirror, resources mmconsts.DownloadJobResources) *batchv1.Job {
 	modelID := cr.Spec.Source.ModelID
 
 	// Build --exclude flags from DownloadExcludePatterns
@@ -45,10 +46,6 @@ export HF_HUB_ENABLE_HF_TRANSFER=1
 export HF_HUB_DOWNLOAD_TIMEOUT=300
 
 pip install -q "huggingface-hub==%s" hf_transfer
-
-if [ -n "${HF_TOKEN:-}" ]; then
-  hf auth login --token "$HF_TOKEN"
-fi
 
 hf download "${MODEL_ID}" \
   --max-workers 4 \%s
@@ -89,12 +86,12 @@ find "/models/${MODEL_ID}/" -mindepth 1 -type d -exec rm -rf {} + 2>/dev/null ||
 		Env:     envVars,
 		Resources: corev1.ResourceRequirements{
 			Requests: corev1.ResourceList{
-				corev1.ResourceCPU:    resource.MustParse("3"),
-				corev1.ResourceMemory: resource.MustParse("8Gi"),
+				corev1.ResourceCPU:    resource.MustParse(resources.CPU),
+				corev1.ResourceMemory: resource.MustParse(resources.Memory),
 			},
 			Limits: corev1.ResourceList{
-				corev1.ResourceCPU:    resource.MustParse("3"),
-				corev1.ResourceMemory: resource.MustParse("8Gi"),
+				corev1.ResourceCPU:    resource.MustParse(resources.CPU),
+				corev1.ResourceMemory: resource.MustParse(resources.Memory),
 			},
 		},
 		VolumeMounts: []corev1.VolumeMount{
