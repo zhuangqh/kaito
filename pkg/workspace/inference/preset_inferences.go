@@ -41,6 +41,8 @@ import (
 	"github.com/kaito-project/kaito/pkg/utils/consts"
 	"github.com/kaito-project/kaito/pkg/utils/generator"
 	"github.com/kaito-project/kaito/pkg/utils/nodes"
+	"github.com/kaito-project/kaito/pkg/workspace/inference/modelstreaming"
+	"github.com/kaito-project/kaito/pkg/workspace/inference/modelstreaming/registry"
 	"github.com/kaito-project/kaito/pkg/workspace/manifests"
 	metadata "github.com/kaito-project/kaito/presets/workspace/models"
 )
@@ -172,21 +174,15 @@ func GeneratePresetInference(ctx context.Context, workspaceObj *v1beta1.Workspac
 	numNodes := int(workspaceObj.Status.TargetNodeCount)
 
 	// Resolve streaming configuration
-	streamingEnabled := ModelStreamingEnabled(workspaceObj)
+	streamingEnabled := modelstreaming.ModelStreamingEnabled(workspaceObj)
 	var streamingModelPath, streamingLoadFormat string
-	var streamingCfg *StreamingConfig
+	var streamingCfg *modelstreaming.StreamingConfig
 	var modelID string
 
 	if streamingEnabled {
-		modelID = ResolveHFModelID(workspaceObj)
-		crName := ModelMirrorCRName(modelID)
-
-		mmCR := &kaitov1alpha1.ModelMirror{}
-		if err := gctx.KubeClient.Get(gctx.Ctx, client.ObjectKey{Name: crName}, mmCR); err != nil {
-			return nil, fmt.Errorf("failed to get ModelMirror CR %s for streaming config: %w", crName, err)
-		}
-
-		streamingCfg, err = StreamingDefaults.ModelStreamer.GetStreamingConfig(gctx, crName, mmCR.Spec.JobNamespace, modelID)
+		modelID = modelstreaming.ResolveHFModelID(workspaceObj)
+		streamer := registry.SelectModelStreamer(workspaceObj)
+		streamingCfg, err = streamer.GetStreamingConfig(gctx, modelID)
 		if err != nil {
 			return nil, fmt.Errorf("failed to resolve streaming config: %w", err)
 		}
@@ -202,7 +198,7 @@ func GeneratePresetInference(ctx context.Context, workspaceObj *v1beta1.Workspac
 
 	// Model source: streaming (az://) vs local download. Mutually exclusive.
 	if streamingEnabled {
-		podOpts = append(podOpts, SetStreamingConfig(streamingCfg, modelID, StreamingDefaults.ServiceAccount))
+		podOpts = append(podOpts, modelstreaming.SetStreamingConfig(streamingCfg, modelID, modelstreaming.StreamingDefaults.ServiceAccount))
 	} else {
 		podOpts = append(podOpts, SetModelDownloadInfo)
 	}
