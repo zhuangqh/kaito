@@ -213,7 +213,10 @@ func (c *WorkspaceReconciler) ensureModelMirror(ctx context.Context, wObj *kaito
 	}
 
 	// Managed mirror: validate the StorageClass exists and uses the correct CSI provisioner.
-	storageClass := modelstreaming.ResolveStorageClass(wObj, modelstreaming.StreamingDefaults.StorageClass)
+	storageClass, err := modelstreaming.ResolveStorageClass(wObj, modelstreaming.StreamingDefaults.StorageClass)
+	if err != nil {
+		return err
+	}
 	sc := &storagev1.StorageClass{}
 	if err := c.Client.Get(ctx, client.ObjectKey{Name: storageClass}, sc); err != nil {
 		return fmt.Errorf("StorageClass %q not found: %w", storageClass, err)
@@ -227,6 +230,11 @@ func (c *WorkspaceReconciler) ensureModelMirror(ctx context.Context, wObj *kaito
 
 	// Validate ServiceAccount exists and has provider-specific identity configured.
 	if err := registry.SelectModelStreamer(wObj).ValidateAuth(ctx, wObj, c.Client, modelstreaming.StreamingDefaults.ServiceAccount); err != nil {
+		return err
+	}
+
+	serviceAccount, err := modelstreaming.ResolveStreamingServiceAccount(wObj, modelstreaming.StreamingDefaults.ServiceAccount)
+	if err != nil {
 		return err
 	}
 
@@ -263,7 +271,8 @@ func (c *WorkspaceReconciler) ensureModelMirror(ctx context.Context, wObj *kaito
 				Size:             modelSize,
 				StorageClassName: ptr.To(storageClass),
 			},
-			JobNamespace: wObj.Namespace,
+			JobNamespace:       wObj.Namespace,
+			ServiceAccountName: serviceAccount,
 		},
 	}
 
