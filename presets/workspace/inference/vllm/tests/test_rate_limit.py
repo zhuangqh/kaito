@@ -70,11 +70,21 @@ for _name, _mod in {
 }.items():
     sys.modules.setdefault(_name, _mod)
 
+# A sibling test module may have registered its own starlette stub first via
+# setdefault. Use whatever JSONResponse class rate_limit actually imported —
+# not the local one, which may not match.
+_StubJSONResponse = sys.modules["starlette.responses"].JSONResponse
+
 _PARENT = str(Path(__file__).resolve().parent.parent)
 if _PARENT not in sys.path:
     sys.path.insert(0, _PARENT)
 
 import rate_limit  # noqa: E402
+
+# If a sibling test module imported rate_limit first with a MagicMock stub of
+# vllm.v1.metrics.prometheus, rate_limit._registry ended up as a MagicMock and
+# won't hold our gauge. Force it to _TEST_REGISTRY so tests are order-independent.
+rate_limit._registry = _TEST_REGISTRY
 
 # The metric the middleware reads. Registered in the same test registry.
 _WAITING_GAUGE = Gauge(
