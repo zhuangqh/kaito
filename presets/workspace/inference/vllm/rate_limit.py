@@ -111,7 +111,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
                 content={
                     "error": {
                         "message": (
-                            f"Server overloaded: waiting queue "
+                            f"Too many requests: waiting queue "
                             f"({int(effective)}) exceeds max-num-seqs "
                             f"({threshold})."
                         ),
