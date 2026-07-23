@@ -32,6 +32,8 @@ import vllm.entrypoints.openai.api_server as api_server
 import yaml
 from huggingface_hub import HfFileSystem, scan_cache_dir
 from prometheus_client import CONTENT_TYPE_LATEST, Gauge, generate_latest
+from prometheus_client.core import GaugeMetricFamily
+from prometheus_client.registry import Collector
 from vllm.entrypoints.openai.models.protocol import LoRAModulePath
 from vllm.utils.argparse_utils import FlexibleArgumentParser
 from vllm.v1.metrics.prometheus import get_prometheus_registry
@@ -59,6 +61,58 @@ kaito_model_download_remaining_seconds = Gauge(
     "Estimated remaining time for model download in seconds; -1 when unknown",
     registry=_registry,
 )
+
+
+class _InflightRequestTimesCollector(Collector):
+    """Per-scrape aggregate of queuing/running time for in-flight requests.
+
+    Fills the gap left by `vllm:request_queue_time_seconds` and
+    `vllm:request_inference_time_seconds`, which are only recorded on
+    request completion.
+
+    WARNING: reads internal vLLM state (`AsyncLLM.output_processor
+    .request_states[*].stats.{arrival_time,scheduled_ts}`). May break on
+    vLLM upgrade; consider upstreaming to vllm-project/vllm.
+    """
+
+    def __init__(self, engine_client: Any) -> None:
+        self._engine_client = engine_client
+
+    def collect(self):
+        # arrival_time is wall-clock; scheduled_ts is monotonic. We can't
+        # use queued_ts for waiting: it's only set once an EngineCoreOutput
+        # arrives, which never happens while the request is still WAITING.
+        wall_now, mono_now = time.time(), time.monotonic()
+        queuing: list[float] = []
+        running: list[float] = []
+        op = getattr(self._engine_client, "output_processor", None)
+        for st in getattr(op, "request_states", {}).values():
+            s = getattr(st, "stats", None)
+            if s is None:
+                continue
+            if s.scheduled_ts:
+                running.append(mono_now - s.scheduled_ts)
+            elif s.arrival_time:
+                queuing.append(wall_now - s.arrival_time)
+
+        yield from self._emit("queuing", "WAITING", queuing)
+        yield from self._emit("running", "RUNNING", running)
+
+    @staticmethod
+    def _emit(kind: str, phase: str, samples: list[float]):
+        prefix = f"kaito_vllm_inflight_{kind}_seconds"
+        yield GaugeMetricFamily(
+            f"{prefix}_max", f"Max {kind} time (s), in-flight requests.",
+            value=max(samples) if samples else 0.0,
+        )
+        yield GaugeMetricFamily(
+            f"{prefix}_sum", f"Sum of {kind} time (s), in-flight requests.",
+            value=sum(samples),
+        )
+        yield GaugeMetricFamily(
+            f"{prefix}_count", f"Number of in-flight ({phase}) requests.",
+            value=len(samples),
+        )
 
 
 class KAITOArgumentParser(argparse.ArgumentParser):
@@ -631,6 +685,10 @@ if __name__ == "__main__":
             )
 
         _wrap_build_and_serve(_stop_pre_download_metrics)
+
+    _wrap_build_and_serve(
+        lambda ec: _registry.register(_InflightRequestTimesCollector(ec))
+    )
 
     # Install the queue-depth rate limit guard via vLLM's built-in --middleware
     # extension point. vLLM imports the dotted path and registers it on its
