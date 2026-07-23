@@ -102,15 +102,18 @@ class _InflightRequestTimesCollector(Collector):
     def _emit(kind: str, phase: str, samples: list[float]):
         prefix = f"kaito_vllm_inflight_{kind}_seconds"
         yield GaugeMetricFamily(
-            f"{prefix}_max", f"Max {kind} time (s), in-flight requests.",
+            f"{prefix}_max",
+            f"Max {kind} time (s), in-flight requests.",
             value=max(samples) if samples else 0.0,
         )
         yield GaugeMetricFamily(
-            f"{prefix}_sum", f"Sum of {kind} time (s), in-flight requests.",
+            f"{prefix}_sum",
+            f"Sum of {kind} time (s), in-flight requests.",
             value=sum(samples),
         )
         yield GaugeMetricFamily(
-            f"{prefix}_count", f"Number of in-flight ({phase}) requests.",
+            f"{prefix}_count",
+            f"Number of in-flight ({phase}) requests.",
             value=len(samples),
         )
 
