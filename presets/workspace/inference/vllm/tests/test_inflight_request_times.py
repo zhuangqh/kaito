@@ -98,9 +98,7 @@ class TestCollect:
         values = _collect(_engine_client({}), monkeypatch)
         for kind in ("queuing", "running"):
             for suffix in ("max", "sum", "count"):
-                assert (
-                    values[f"kaito_vllm_inflight_{kind}_seconds_{suffix}"] == 0.0
-                )
+                assert values[f"kaito_vllm_inflight_{kind}_seconds_{suffix}"] == 0.0
 
     def test_running_only(self, monkeypatch):
         engine = _engine_client(
@@ -186,9 +184,7 @@ class TestEmittedMetadata:
     def test_metric_family_names(self, monkeypatch):
         monkeypatch.setattr(inference_api.time, "time", lambda: WALL_NOW)
         monkeypatch.setattr(inference_api.time, "monotonic", lambda: MONO_NOW)
-        families = list(
-            _InflightRequestTimesCollector(_engine_client({})).collect()
-        )
+        families = list(_InflightRequestTimesCollector(_engine_client({})).collect())
         names = [f.name for f in families]
         assert names == [
             "kaito_vllm_inflight_queuing_seconds_max",
