@@ -112,11 +112,22 @@ func ModelMirrorObjectMeta(ws *v1beta1.Workspace) metav1.ObjectMeta {
 
 // ResolveHFModelID resolves the HuggingFace model ID from a workspace's preset name.
 // Returns "" if the workspace has no inference preset.
+// ResolveHFModelID returns the identifier the streaming layer uses for a
+// workspace's model. A bring-your-own model has no HuggingFace identity, so it
+// is identified by the ConfigMap that defines it rather than the reserved
+// literal "custom", which would collide across every custom deployment in the
+// namespace. That ConfigMap is immutable and a different model requires a
+// different name, so the identifier is stable for the model's lifetime and can
+// be derived without reading cluster state.
 func ResolveHFModelID(ws *v1beta1.Workspace) string {
 	if ws.Inference == nil || ws.Inference.Preset == nil {
 		return ""
 	}
-	return plugin.ResolveHFModelID(string(ws.Inference.Preset.Name))
+	presetName := string(ws.Inference.Preset.Name)
+	if plugin.IsCustomPreset(presetName) {
+		return plugin.CustomModelNamePrefix + ws.Inference.Config
+	}
+	return plugin.ResolveHFModelID(presetName)
 }
 
 // ResolveStreamingServiceAccount resolves the ServiceAccount name for streaming.

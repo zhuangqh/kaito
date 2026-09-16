@@ -686,7 +686,7 @@ func TestGetModelByName(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			tt.setupFunc()
 
-			result, err := GetModelByName(context.Background(), tt.modelName, tt.secretName, tt.secretNamespace, tt.kubeClient)
+			result, err := GetModelByName(context.Background(), tt.modelName, "", tt.secretName, tt.secretNamespace, tt.kubeClient)
 
 			if tt.expectedError != "" {
 				assert.Error(t, err)
@@ -809,7 +809,7 @@ func TestGetModelByName_BuiltinModels(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result, err := GetModelByName(context.Background(), tt.modelName, "", "", nil)
+			result, err := GetModelByName(context.Background(), tt.modelName, "", "", "", nil)
 
 			assert.NoError(t, err)
 			assert.NotNil(t, result)
@@ -847,7 +847,7 @@ func TestGetModelByName_ErrorCases(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result, err := GetModelByName(context.Background(), tt.modelName, "", "", nil)
+			result, err := GetModelByName(context.Background(), tt.modelName, "", "", "", nil)
 
 			assert.Error(t, err)
 			assert.Contains(t, err.Error(), tt.expectedError)
@@ -887,7 +887,7 @@ func TestGetModelByName_CaseInsensitivity(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result, err := GetModelByName(context.Background(), tt.inputName, "", "", nil)
+			result, err := GetModelByName(context.Background(), tt.inputName, "", "", "", nil)
 
 			assert.NoError(t, err)
 			assert.NotNil(t, result)
@@ -927,7 +927,7 @@ func TestGetModelByName_HuggingFaceModelWithSlash(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result, err := GetModelByName(context.Background(), tt.modelName, tt.secretName, tt.secretNamespace, tt.kubeClient)
+			result, err := GetModelByName(context.Background(), tt.modelName, "", tt.secretName, tt.secretNamespace, tt.kubeClient)
 
 			if tt.expectError {
 				assert.Error(t, err)
@@ -965,7 +965,7 @@ func TestGetModelByName_PreRegisteredModel(t *testing.T) {
 
 	for _, m := range testModels {
 		t.Run("lookup "+m.id, func(t *testing.T) {
-			result, err := GetModelByName(context.Background(), m.id, "", "", nil)
+			result, err := GetModelByName(context.Background(), m.id, "", "", "", nil)
 
 			assert.NoError(t, err)
 			assert.NotNil(t, result)
@@ -987,7 +987,7 @@ func TestGetModelByName_ContextCancellation(t *testing.T) {
 	}
 	registerModel(testModelName, param)
 
-	result, err := GetModelByName(ctx, testModelName, "", "", nil)
+	result, err := GetModelByName(ctx, testModelName, "", "", "", nil)
 
 	// Should still work for registered models since context is only used for k8s client
 	assert.NoError(t, err)
@@ -1023,7 +1023,7 @@ func TestGetModelByName_ShortNameRedirectsToCatalog(t *testing.T) {
 	// instead of returning the pre-registered phi4Model.
 	for shortName, hfName := range plugin.LegacyBuiltinToCatalog {
 		t.Run(shortName, func(t *testing.T) {
-			result, err := GetModelByName(context.Background(), shortName, "", "", nil)
+			result, err := GetModelByName(context.Background(), shortName, "", "", "", nil)
 			assert.NoError(t, err)
 			assert.NotNil(t, result)
 

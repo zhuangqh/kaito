@@ -70,4 +70,13 @@ const (
 
 	// WorkspaceConditionTypeModelMirrorReady indicates the ModelMirror download is complete and model is ready for streaming.
 	WorkspaceConditionTypeModelMirrorReady = ConditionType("ModelMirrorReady")
+
+	// WorkspaceConditionTypeModelConfigReady reports whether a bring-your-own
+	// model's configuration resolved successfully and still matches what the
+	// deployment was sized and configured from.
+	WorkspaceConditionTypeModelConfigReady = ConditionType("ModelConfigReady")
+
+	// WorkspaceConditionTypeModelArtifactReady reports whether the model bundle
+	// at the configured source is available and matches that configuration.
+	WorkspaceConditionTypeModelArtifactReady = ConditionType("ModelArtifactReady")
 )
