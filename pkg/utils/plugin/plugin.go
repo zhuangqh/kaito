@@ -41,9 +41,8 @@ type ModelRegister struct {
 
 var KaitoModelRegister ModelRegister
 
-// LegacyBuiltinToCatalog maps legacy short preset names (e.g. "phi-4") to their
-// full HuggingFace model IDs (e.g. "microsoft/phi-4").
-// Please don't introduce new entries to LegacyBuiltinToCatalog.
+// LegacyBuiltinToCatalog maps legacy short preset names to full HuggingFace
+// model IDs. Deprecated: use full HuggingFace model IDs in new manifests.
 var LegacyBuiltinToCatalog = map[string]string{
 	"phi-4":                         "microsoft/phi-4",
 	"phi-4-mini-instruct":           "microsoft/phi-4-mini-instruct",
@@ -112,8 +111,7 @@ func IsValidPreset(preset string) bool {
 	if KaitoModelRegister.Has(preset) {
 		return true
 	}
-	normalizedPreset := strings.ToLower(preset)
-	if _, ok := LegacyBuiltinToCatalog[normalizedPreset]; ok {
+	if _, ok := LegacyBuiltinToCatalog[strings.ToLower(preset)]; ok {
 		return true
 	}
 	// if preset is like "a/b", consider it as a valid HF model ID
@@ -126,10 +124,9 @@ func IsValidPreset(preset string) bool {
 	return false
 }
 
-// ResolveHFModelID resolves a preset name to its HuggingFace model ID.
+// ResolveHFModelID resolves a legacy preset alias to its HuggingFace model ID.
 func ResolveHFModelID(presetName string) string {
-	name := strings.ToLower(presetName)
-	if hfName, ok := LegacyBuiltinToCatalog[name]; ok {
+	if hfName, ok := LegacyBuiltinToCatalog[strings.ToLower(presetName)]; ok {
 		return hfName
 	}
 	return presetName
