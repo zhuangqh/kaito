@@ -524,7 +524,7 @@ func GenerateInferencePodSpec(gpuConfig *sku.GPUConfig, numNodes int, streamingM
 		// no config volume is mounted and the runtime falls back to its built-in defaults.
 		var cmVolumeMountRef *corev1.VolumeMount
 		if userConfig := ctx.Workspace.Inference.Config; userConfig != "" {
-			cmVolume, cmVolumeMount := utils.ConfigCMVolume(userConfig)
+			cmVolume, cmVolumeMount := utils.InferenceConfigCMVolume(userConfig)
 			volumes = append(volumes, cmVolume)
 			volumeMounts = append(volumeMounts, cmVolumeMount)
 			cmVolumeMountRef = &cmVolumeMount
@@ -771,6 +771,17 @@ func buildMainContainerEnv(runtimeName pkgmodel.RuntimeName, inferenceParam *pkg
 		env = append(env, corev1.EnvVar{
 			Name:  consts.VLLMWSL2EnablePinMemoryEnvName,
 			Value: "1",
+		})
+	}
+
+	// A bring-your-own model is sized and configured from an operator-supplied
+	// config.json, which the serving pod never sees. Pass its digest so startup
+	// can confirm the streamed bundle is the same model that was sized, rather
+	// than discovering the mismatch as an out-of-memory failure during load.
+	if digest, ok := pkgmodel.CustomModelDigest(inferenceParam.Metadata.Name); ok {
+		env = append(env, corev1.EnvVar{
+			Name:  consts.ModelConfigSHA256EnvName,
+			Value: digest,
 		})
 	}
 
