@@ -30,6 +30,7 @@ import rate_limit
 import uvloop
 import vllm.entrypoints.openai.api_server as api_server
 import yaml
+from _workarounds import model_asset_prefetch
 from huggingface_hub import HfFileSystem, scan_cache_dir
 from prometheus_client import CONTENT_TYPE_LATEST, Gauge, generate_latest
 from vllm.entrypoints.openai.models.protocol import LoRAModulePath
@@ -115,6 +116,7 @@ class KAITOArgumentParser(argparse.ArgumentParser):
             default=False,
             help="Disable the loopback endpoint used to abort startup benchmark requests.",
         )
+        model_asset_prefetch.register_args(self)
 
     def _reset_vllm_defaults(self):
         local_rank = int(os.environ.get("LOCAL_RANK", 0))  # Default to 0 if not set
@@ -683,6 +685,8 @@ if __name__ == "__main__":
 
     _wrap_build_and_serve(_configure_runtime_limits)
     configure_middlewares(args)
+
+    model_asset_prefetch.prefetch_model_assets(args)
 
     # See https://docs.vllm.ai/en/latest/serving/openai_compatible_server.html
     uvloop.run(api_server.run_server(args))
