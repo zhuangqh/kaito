@@ -153,7 +153,7 @@ def _abort_requests() -> None:
         headers={"Content-Type": "application/json"},
         method="POST",
     )
-    with urllib.request.urlopen(request, timeout=5) as response:
+    with urllib.request.urlopen(request, timeout=60) as response:
         if response.status != 200:
             raise RuntimeError(f"abort_requests returned HTTP status {response.status}")
 
