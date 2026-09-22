@@ -7,7 +7,7 @@ on:
       old_chart_version:
         description: "Old chart version to upgrade from"
         required: true
-        default: "0.7.1"
+        default: "0.9.0"
         type: string
 
 permissions:
@@ -15,7 +15,7 @@ permissions:
   contents: read
 
 env:
-  OLD_CHART_VERSION: ${{ github.event.inputs.old_chart_version || '0.7.1' }}
+  OLD_CHART_VERSION: ${{ github.event.inputs.old_chart_version || '0.9.0' }}
   GO_VERSION: "1.26.6"
 
 jobs:
