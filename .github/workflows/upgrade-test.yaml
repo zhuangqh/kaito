@@ -86,9 +86,9 @@ jobs:
           # Wait for workspace to be ready
           kubectl wait --for=condition=InferenceReady workspace/workspace-mistral-7b-instruct --timeout=1800s
 
-          # Verify it is using a Deployment
-          if ! kubectl get deployment workspace-mistral-7b-instruct; then
-            echo "Error: Deployment not found for workspace"
+          # Verify it is using a StatefulSet
+          if ! kubectl get statefulset workspace-mistral-7b-instruct; then
+            echo "Error: StatefulSet not found for workspace"
             exit 1
           fi
 
@@ -107,11 +107,9 @@ jobs:
         env:
           REGISTRY: ${{ env.REGISTRY }}
 
-      - name: Verify migration to StatefulSet
+      - name: Verify StatefulSet after upgrade
         shell: bash
         run: |
-          kubectl wait --for=create statefulset/workspace-mistral-7b-instruct --timeout=300s
-          kubectl wait --for=delete deployment/workspace-mistral-7b-instruct --timeout=300s
           kubectl rollout status statefulset/workspace-mistral-7b-instruct --timeout=1000s
           kubectl wait --for=condition=InferenceReady workspace/workspace-mistral-7b-instruct --timeout=1000s
 
@@ -187,6 +185,7 @@ jobs:
             if [ ${status} -eq 0 ]; then
               echo "${output}"
               echo "byonode node pool created successfully."
+              kubectl wait --for=condition=Ready node -l apps=byo --timeout=600s
               node_name=$(kubectl get nodes -l apps=byo -o jsonpath='{.items[0].metadata.name}')
               echo "NODE_NAME=$node_name" >> $GITHUB_ENV
               exit 0
@@ -220,6 +219,25 @@ jobs:
           kubectl wait --for=condition=available deploy "kaito-workspace" -n kaito-workspace --timeout=300s
           kubectl wait --for=jsonpath='{.subsets[0].addresses[0].ip}' endpoints "kaito-workspace-svc" -n kaito-workspace --timeout=60s
 
+          labels_ready=false
+          for attempt in $(seq 1 60); do
+            if kubectl get node "${NODE_NAME}" -o json | jq -e '
+              .metadata.labels["nvidia.com/gpu.product"] != null and
+              .metadata.labels["nvidia.com/gpu.count"] != null and
+              .metadata.labels["nvidia.com/gpu.memory"] != null
+            ' > /dev/null; then
+              labels_ready=true
+              break
+            fi
+            echo "Waiting for NVIDIA GPU labels on ${NODE_NAME} (attempt ${attempt}/60)..."
+            sleep 10
+          done
+
+          if [ "${labels_ready}" != "true" ]; then
+            echo "Timeout waiting for NVIDIA GPU labels on ${NODE_NAME}"
+            exit 1
+          fi
+
       - name: Create mistral-7b-instruct workspace (BYO mode)
         shell: bash
         run: |
@@ -229,7 +247,6 @@ jobs:
           metadata:
             name: workspace-mistral-7b-instruct
           resource:
-            instanceType: "Standard_NV36ads_A10_v5"
             labelSelector:
               matchLabels:
                 apps: byo
@@ -243,19 +260,18 @@ jobs:
       - name: Wait for workspace readiness (old controller, BYO)
         shell: bash
         run: |
-          # Busy loop check if deployment is found
-          # It's because there is a bug in the workspace observation status. Check deployment status instead here.
+          # There is a bug in the workspace observation status, so check the StatefulSet instead.
           end=$((SECONDS+1000))
           while [ $SECONDS -lt $end ]; do
-            if kubectl get deployment workspace-mistral-7b-instruct &> /dev/null; then
+            if kubectl get statefulset workspace-mistral-7b-instruct &> /dev/null; then
               break
             fi
-            echo "Waiting for deployment..."
+            echo "Waiting for StatefulSet..."
             sleep 10
           done
 
           if [ $SECONDS -ge $end ]; then
-            echo "Timeout waiting for deployment"
+            echo "Timeout waiting for StatefulSet"
             exit 1
           fi
 
@@ -280,11 +296,9 @@ jobs:
         env:
           REGISTRY: ${{ env.REGISTRY }}
 
-      - name: Verify migration to StatefulSet (BYO)
+      - name: Verify StatefulSet after upgrade (BYO)
         shell: bash
         run: |
-          kubectl wait --for=create statefulset/workspace-mistral-7b-instruct --timeout=300s
-          kubectl wait --for=delete deployment/workspace-mistral-7b-instruct --timeout=300s
           kubectl rollout status statefulset/workspace-mistral-7b-instruct --timeout=1200s
           kubectl wait --for=condition=InferenceReady workspace/workspace-mistral-7b-instruct --timeout=1200s
 
