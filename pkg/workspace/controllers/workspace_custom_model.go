@@ -30,7 +30,7 @@ import (
 // are driven by a model identity that has already been recorded.
 func (c *WorkspaceReconciler) reconcileResolvedModel(ctx context.Context, wObj *kaitov1beta1.Workspace) error {
 	record, err := custommodel.Reconcile(ctx, c.Client, wObj.Inference, wObj.Namespace,
-		wObj.Status.ResolvedModel, wObj,
+		wObj.Status.ResolvedModel, wObj, c.Recorder,
 		workspaceModelStatusWriter{client: c.Client, key: client.ObjectKey{Name: wObj.Name, Namespace: wObj.Namespace}})
 	if err != nil {
 		return err
@@ -65,16 +65,13 @@ func (w workspaceModelStatusWriter) SetModelConfigCondition(ctx context.Context,
 
 func (w workspaceModelStatusWriter) SaveResolved(ctx context.Context,
 	record *kaitov1beta1.ResolvedModel, reason, message string,
-) error {
-	return workspace.UpdateWorkspaceStatus(ctx, w.client, &w.key,
+) (bool, error) {
+	var becameReady bool
+	err := workspace.UpdateWorkspaceStatus(ctx, w.client, &w.key,
 		func(s *kaitov1beta1.WorkspaceStatus) error {
 			s.ResolvedModel = record
-			meta.SetStatusCondition(&s.Conditions, metav1.Condition{
-				Type:    string(kaitov1beta1.WorkspaceConditionTypeModelConfigReady),
-				Status:  metav1.ConditionTrue,
-				Reason:  reason,
-				Message: message,
-			})
+			becameReady = custommodel.SetResolvedCondition(&s.Conditions, reason, message)
 			return nil
 		})
+	return becameReady, err
 }

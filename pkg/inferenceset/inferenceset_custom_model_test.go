@@ -24,6 +24,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/tools/record"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
@@ -210,4 +211,20 @@ func TestISReconcileResolvedModelSkipsNonCustomPresets(t *testing.T) {
 
 	require.NoError(t, r.reconcileResolvedModel(context.Background(), is))
 	assert.Nil(t, isModelCondition(t, r))
+}
+
+func TestISReconcileResolvedModelWarnsOnceForUnmatchedReferenceModel(t *testing.T) {
+	is := customInferenceSet()
+	cm := customISConfigMap(customISConfigJSON, customISSizeBytes)
+	cm.Data[models.CustomModelReferenceModelIDKey] = "acme/qwn3-8b"
+	r := newCustomISReconciler(is, cm)
+	recorder := record.NewFakeRecorder(10)
+	r.Recorder = recorder
+
+	require.NoError(t, r.reconcileResolvedModel(context.Background(), is))
+	require.Len(t, recorder.Events, 1)
+	assert.Contains(t, <-recorder.Events, custommodel.ReasonReferenceModelUnmatched)
+
+	require.NoError(t, r.reconcileResolvedModel(context.Background(), is))
+	assert.Empty(t, recorder.Events)
 }
