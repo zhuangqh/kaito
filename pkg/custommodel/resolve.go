@@ -75,8 +75,8 @@ func (e *ReplacedError) Error() string {
 		e.ConfigMapName, e.Recorded, e.Found)
 }
 
-// Resolve resolves the model referenced by the inference spec and returns the
-// record to store in status.
+// resolve resolves the model referenced by the inference spec and returns the
+// record to store in status, along with the resolved custom model.
 //
 // When recorded is non-nil it is treated as the identity the deployment was
 // already built from, and a changed configuration is reported as a
@@ -88,13 +88,6 @@ func (e *ReplacedError) Error() string {
 // Only the configuration digest is compared. The declared size is allowed to
 // drift: it is an operator-supplied capacity hint about the same weights, not
 // part of what identifies them.
-func Resolve(ctx context.Context, kubeClient client.Client, inferenceSpec *kaitov1beta1.InferenceSpec,
-	namespace string, recorded *kaitov1beta1.ResolvedModel,
-) (*kaitov1beta1.ResolvedModel, error) {
-	statusRecord, _, err := resolve(ctx, kubeClient, inferenceSpec, namespace, recorded)
-	return statusRecord, err
-}
-
 func resolve(ctx context.Context, kubeClient client.Client, inferenceSpec *kaitov1beta1.InferenceSpec,
 	namespace string, recorded *kaitov1beta1.ResolvedModel,
 ) (*kaitov1beta1.ResolvedModel, *models.ResolvedCustomModel, error) {
