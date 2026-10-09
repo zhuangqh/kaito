@@ -282,6 +282,86 @@ def test_write_env_file():
     assert "sv=1&sig=ab'\\''cd" in content, content
 
 
+def test_redact_masks_signature_everywhere():
+    line = "GET https://a.blob.core.windows.net/c?sv=1&sig=SECRET%2F&se=x failed; sig=OTHER"
+    out = fetch_sas.redact(line)
+    assert "SECRET" not in out and "OTHER" not in out, out
+    assert "se=x" in out, out
+
+
+def test_redact_url_only_touches_sas_urls():
+    assert (
+        fetch_sas.redact_url("https://a.blob.core.windows.net/c/x?sv=1&sig=abc")
+        == "https://a.blob.core.windows.net/c/x?<redacted>"
+    )
+    plain = "https://a/models/m/versions/1?api-version=2025-11-15-preview"
+    assert fetch_sas.redact_url(plain) == plain
+
+
+def test_describe_error_includes_http_status_and_body():
+    import io
+    import urllib.error
+
+    err = urllib.error.HTTPError(
+        "https://a.blob.core.windows.net/c?sig=abc",
+        403,
+        "Forbidden",
+        {},
+        io.BytesIO(b'{"error":{"code":"AuthorizationFailed"}}'),
+    )
+    msg = fetch_sas.describe_error(err)
+    assert "HTTP 403" in msg and "AuthorizationFailed" in msg, msg
+    assert "abc" not in msg, msg
+
+
+def test_describe_error_truncates_large_body():
+    import io
+    import urllib.error
+
+    body = b"x" * (fetch_sas.MAX_ERROR_BODY + 100)
+    err = urllib.error.HTTPError("https://a/m", 500, "err", {}, io.BytesIO(body))
+    assert "...(truncated)" in fetch_sas.describe_error(err)
+
+
+def test_step_logs_and_wraps_failure():
+    import logging
+
+    records = []
+
+    class _Capture(logging.Handler):
+        def emit(self, record):
+            records.append(fetch_sas.redact(record.getMessage()))
+
+    fetch_sas.configure_logging()
+    fetch_sas.log.addHandler(_Capture())
+    try:
+        with fetch_sas.step(1, "ok step"):
+            pass
+        try:
+            with fetch_sas.step(2, "bad step"):
+                raise ValueError("boom sig=leak")
+        except fetch_sas.StepError as err:
+            assert isinstance(err.cause, ValueError)
+        else:
+            raise AssertionError("expected StepError")
+    finally:
+        fetch_sas.configure_logging()
+    joined = "\n".join(records)
+    assert "ok step ok (" in joined, joined
+    assert "bad step failed (" in joined and "boom" in joined, joined
+    assert "leak" not in joined, joined
+
+
+def test_main_reports_missing_env():
+    saved = {k: os.environ.pop(k, None) for k in fetch_sas.REQUIRED_ENV}
+    try:
+        assert fetch_sas.main() == 1
+    finally:
+        for k, v in saved.items():
+            if v is not None:
+                os.environ[k] = v
+
+
 if __name__ == "__main__":
     for name, fn in sorted(globals().items()):
         if name.startswith("test_") and callable(fn):
