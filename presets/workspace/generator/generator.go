@@ -406,8 +406,6 @@ type Generator struct {
 	// match them. It is only a lookup key: model metadata and sizing still come
 	// from config.json.
 	nameHint string
-	// familyMatched records whether any name-keyed table matched.
-	familyMatched bool
 }
 
 // ModelNameFromRepo returns the lowercased final path segment of a model
@@ -427,27 +425,13 @@ func (g *Generator) familyName() string {
 // lookupFamilyPrefix returns the value of the longest table prefix of the
 // generator's family name.
 func lookupFamilyPrefix[V any](g *Generator, table map[string]V) (V, bool) {
-	v, ok := longestPrefixMatch(g.familyName(), table)
-	g.familyMatched = g.familyMatched || ok
-	return v, ok
+	return longestPrefixMatch(g.familyName(), table)
 }
 
 // lookupFamilyExact returns the table value keyed by the generator's family name.
 func lookupFamilyExact[V any](g *Generator, table map[string]V) (V, bool) {
 	v, ok := table[g.familyName()]
-	g.familyMatched = g.familyMatched || ok
 	return v, ok
-}
-
-// MatchesModelFamily reports whether a reference model selects an entry in any
-// name-keyed table. It runs the same lookups as generation, so a new table is
-// covered as soon as generation consults it.
-func MatchesModelFamily(id ReferenceModelID) bool {
-	g := &Generator{nameHint: id.FamilyName()}
-	g.Param.VLLM.ModelRunParams = map[string]string{}
-	g.applyFamilyParsers()
-	g.applyFamilyRunParams()
-	return g.familyMatched
 }
 
 func NewGenerator(modelRepo, token string) *Generator {

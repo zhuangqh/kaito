@@ -22,9 +22,7 @@ import (
 	"strconv"
 	"strings"
 
-	"gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
-	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/klog/v2"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -80,13 +78,6 @@ type ResolvedCustomModel struct {
 	// must stay a digest of config.json alone so that startup verification can
 	// compare it against the bundle's own copy of that file.
 	SizeBytes int64
-	// ReferenceModelID is the reference model the family settings were derived
-	// from, or empty when none was given.
-	ReferenceModelID generator.ReferenceModelID
-	// ReferenceModelMatched reports whether ReferenceModelID is a model KAITO
-	// knows: it selects a model-family setting or is in the model catalog. An
-	// unmatched reference contributes nothing and is most likely a typo.
-	ReferenceModelMatched bool
 }
 
 // parseModelSize reads the declared bundle size from the ConfigMap. It is
@@ -212,16 +203,6 @@ func ResolveCustomModelFromConfig(configJSON []byte, sizeBytes int64, opts ...ge
 
 	digest := ConfigDigest(configJSON)
 	name := CustomModelName(digest)
-	result := func(m model.Model) *ResolvedCustomModel {
-		return &ResolvedCustomModel{
-			Model:                 m,
-			Digest:                digest,
-			Name:                  name,
-			SizeBytes:             sizeBytes,
-			ReferenceModelID:      options.ReferenceModelID,
-			ReferenceModelMatched: referenceModelKnown(options.ReferenceModelID),
-		}
-	}
 
 	// The generated parameters are a function of the configuration *and* the
 	// declared size, so the cache is keyed by both. The model's identity - its
@@ -236,7 +217,7 @@ func ResolveCustomModelFromConfig(configJSON []byte, sizeBytes int64, opts ...ge
 	// The reference model ID is keyed the same way, for the same reason.
 	cacheKey := customModelCacheKey(name, sizeBytes, options.ReferenceModelID)
 	if m := plugin.KaitoModelRegister.MustGet(cacheKey); m != nil {
-		return result(m), nil
+		return &ResolvedCustomModel{Model: m, Digest: digest, Name: name, SizeBytes: sizeBytes}, nil
 	}
 
 	param, err := generator.GenerateFromConfig(name, configJSON, sizeBytes, opts...)
@@ -254,7 +235,7 @@ func ResolveCustomModelFromConfig(configJSON []byte, sizeBytes int64, opts ...ge
 	// size: they generate byte-identical parameters, so the second registration
 	// overwrites the first with an equal value. The registry is a cache, not a
 	// lock; correctness rests on the derivation being pure, not on single-flight.
-	return result(registerModel(cacheKey, param)), nil
+	return &ResolvedCustomModel{Model: registerModel(cacheKey, param), Digest: digest, Name: name, SizeBytes: sizeBytes}, nil
 }
 
 // customModelCacheKey is the process-global registry key under which a resolved
@@ -271,27 +252,4 @@ func customModelCacheKey(name string, sizeBytes int64, referenceModelID generato
 	}
 	sum := sha256.Sum256([]byte(referenceModelID))
 	return key + "-" + hex.EncodeToString(sum[:8])
-}
-
-// catalogModelIDs is the lowercased set of model IDs in the embedded model
-// catalog.
-var catalogModelIDs = map[string]bool{}
-
-func init() {
-	catalog := generator.ModelCatalog{}
-	utilruntime.Must(yaml.Unmarshal(modelCatalogYAML, &catalog))
-	for _, m := range catalog.Models {
-		catalogModelIDs[strings.ToLower(m.Name)] = true
-	}
-}
-
-// referenceModelKnown reports whether a reference model selects any
-// model-family setting or names a catalog model. A catalog model may need no
-// family-specific settings at all, so the catalog check keeps a correct
-// reference from being reported as unmatched.
-func referenceModelKnown(id generator.ReferenceModelID) bool {
-	if id == "" {
-		return false
-	}
-	return generator.MatchesModelFamily(id) || catalogModelIDs[strings.ToLower(string(id))]
 }

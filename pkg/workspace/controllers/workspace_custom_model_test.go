@@ -25,7 +25,6 @@ import (
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/client-go/tools/record"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
@@ -275,52 +274,4 @@ func TestReconcileResolvedModelRejectsMissingSize(t *testing.T) {
 	require.NotNil(t, cond)
 	assert.Equal(t, custommodel.ReasonInvalid, cond.Reason)
 	assert.Nil(t, stored.Status.ResolvedModel)
-}
-
-func TestReconcileResolvedModelWarnsOnceForUnmatchedReferenceModel(t *testing.T) {
-	ws := customModelWorkspace()
-	cm := customModelConfigMap("byo-config", customModelConfigJSON)
-	cm.Data[models.CustomModelReferenceModelIDKey] = "acme/qwn3-8b"
-	r := newCustomModelReconciler(ws, cm)
-	recorder := record.NewFakeRecorder(10)
-	r.Recorder = recorder
-
-	require.NoError(t, r.reconcileResolvedModel(context.Background(), ws))
-	require.Len(t, recorder.Events, 1)
-	event := <-recorder.Events
-	assert.Contains(t, event, corev1.EventTypeWarning)
-	assert.Contains(t, event, custommodel.ReasonReferenceModelUnmatched)
-	assert.Contains(t, event, "acme/qwn3-8b")
-
-	// The dedupe decision is made against the persisted status, so a later
-	// reconcile of the same stale in-memory object must not repeat it.
-	require.NoError(t, r.reconcileResolvedModel(context.Background(), ws))
-	assert.Empty(t, recorder.Events)
-}
-
-func TestReconcileResolvedModelLeavesWarningToOwningInferenceSet(t *testing.T) {
-	ws := customModelWorkspace()
-	ws.OwnerReferences = []metav1.OwnerReference{*metav1.NewControllerRef(
-		&kaitov1beta1.InferenceSet{ObjectMeta: metav1.ObjectMeta{Name: "is", UID: "is-uid"}},
-		kaitov1beta1.GroupVersion.WithKind("InferenceSet"))}
-	cm := customModelConfigMap("byo-config", customModelConfigJSON)
-	cm.Data[models.CustomModelReferenceModelIDKey] = "acme/qwn3-8b"
-	r := newCustomModelReconciler(ws, cm)
-	recorder := record.NewFakeRecorder(10)
-	r.Recorder = recorder
-
-	require.NoError(t, r.reconcileResolvedModel(context.Background(), ws))
-	assert.Empty(t, recorder.Events)
-}
-
-func TestReconcileResolvedModelDoesNotWarnForMatchedReferenceModel(t *testing.T) {
-	ws := customModelWorkspace()
-	cm := customModelConfigMap("byo-config", customModelConfigJSON)
-	cm.Data[models.CustomModelReferenceModelIDKey] = "Qwen/Qwen3-8B"
-	r := newCustomModelReconciler(ws, cm)
-	recorder := record.NewFakeRecorder(10)
-	r.Recorder = recorder
-
-	require.NoError(t, r.reconcileResolvedModel(context.Background(), ws))
-	assert.Empty(t, recorder.Events)
 }

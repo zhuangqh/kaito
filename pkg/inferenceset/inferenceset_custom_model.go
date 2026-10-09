@@ -16,6 +16,7 @@ package inferenceset
 import (
 	"context"
 
+	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -33,7 +34,7 @@ import (
 // replicas that would then disagree with the existing ones.
 func (c *InferenceSetReconciler) reconcileResolvedModel(ctx context.Context, iObj *kaitov1beta1.InferenceSet) error {
 	record, err := custommodel.Reconcile(ctx, c.Client, &iObj.Spec.Template.Inference, iObj.Namespace,
-		iObj.Status.ResolvedModel, iObj, c.Recorder, inferenceSetModelStatusWriter{client: c.Client, obj: iObj})
+		iObj.Status.ResolvedModel, iObj, inferenceSetModelStatusWriter{client: c.Client, obj: iObj})
 	if err != nil {
 		return err
 	}
@@ -59,14 +60,17 @@ func (w inferenceSetModelStatusWriter) SetModelConfigCondition(ctx context.Conte
 
 func (w inferenceSetModelStatusWriter) SaveResolved(ctx context.Context,
 	record *kaitov1beta1.ResolvedModel, reason, message string,
-) (bool, error) {
-	var becameReady bool
-	err := inferenceset.UpdateInferenceSetStatus(ctx, w.client,
+) error {
+	return inferenceset.UpdateInferenceSetStatus(ctx, w.client,
 		&client.ObjectKey{Name: w.obj.Name, Namespace: w.obj.Namespace},
 		func(status *kaitov1beta1.InferenceSetStatus) error {
 			status.ResolvedModel = record
-			becameReady = custommodel.SetResolvedCondition(&status.Conditions, reason, message)
+			meta.SetStatusCondition(&status.Conditions, metav1.Condition{
+				Type:    string(kaitov1beta1.WorkspaceConditionTypeModelConfigReady),
+				Status:  metav1.ConditionTrue,
+				Reason:  reason,
+				Message: message,
+			})
 			return nil
 		})
-	return becameReady, err
 }

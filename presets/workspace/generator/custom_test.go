@@ -249,16 +249,6 @@ func TestParseReferenceModelID(t *testing.T) {
 	assert.Equal(t, "qwen3-8b", id.FamilyName())
 }
 
-func TestMatchesModelFamily(t *testing.T) {
-	assert.True(t, MatchesModelFamily("Qwen/Qwen3-8B"))
-	assert.True(t, MatchesModelFamily("deepseek-ai/DeepSeek-V3.2"))
-	assert.True(t, MatchesModelFamily("MiniMaxAI/MiniMax-M2.5"))
-	assert.True(t, MatchesModelFamily("google/gemma-3-27b-it"))
-	assert.False(t, MatchesModelFamily("microsoft/phi-4"))
-	assert.False(t, MatchesModelFamily("acme/unknown-model"))
-	assert.False(t, MatchesModelFamily(""))
-}
-
 func TestGenerateFromConfigReferenceAffectsRuntimeParamsOnly(t *testing.T) {
 	plain, err := GenerateFromConfig("custom-ref", []byte(llamaConfigJSON), testSizeBytes)
 	require.NoError(t, err)

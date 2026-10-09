@@ -137,7 +137,7 @@ The registry is an in-memory, process-local cache. Content addressing is what ma
 
 Two consequences are deliberate. Derived defaults follow the controller version rather than being pinned, matching existing preset behavior: a controller upgrade combined with a spec change may change derived flags. And the generator's model-name heuristics cannot match `custom-<sha256>`, so without a reference model, defaults come only from configuration; where no reliable default exists, the affected parser is disabled with a warning.
 
-The optional `reference_model_id` key restores those heuristics: its model name is used to look up runtime settings such as parsers, chat template and vLLM backends, falling back to the architecture when nothing matches. It never changes the model's identity or sizing, nothing is downloaded for it, and speculative decoding is not inherited. An unrecognized reference, most likely a typo, raises a `ReferenceModelUnmatched` Warning event.
+The optional `reference_model_id` key restores those heuristics: its model name is used to look up runtime settings such as parsers, chat template and vLLM backends, falling back to the architecture when nothing matches. It never changes the model's identity or sizing, nothing is downloaded for it, and speculative decoding is not inherited. An unrecognized reference contributes nothing.
 
 Native dtype parsing is new; the current wrapper defaults native models to BF16. Reject conflicting normalized `dtype`/`torch_dtype`. CLI `auto` is not a memory representation. FP8 weights imply neither `--quantization=fp8` nor FP8 KV cache. Structural dimensions, RoPE, and checkpoint layout stay in the verified `config.json`. Source/tokenizer paths and code-trust policy remain separate responsibilities.
 

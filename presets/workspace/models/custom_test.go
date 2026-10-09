@@ -404,8 +404,6 @@ func TestCustomModelDigestRoundTrips(t *testing.T) {
 func TestResolveCustomModelAppliesReferenceModel(t *testing.T) {
 	plain, err := ResolveCustomModelFromConfigMap(customConfigMap("byo-plain", validCustomData(testCustomConfigJSON), true))
 	require.NoError(t, err)
-	assert.Empty(t, plain.ReferenceModelID)
-	assert.False(t, plain.ReferenceModelMatched)
 
 	data := validCustomData(testCustomConfigJSON)
 	data[CustomModelReferenceModelIDKey] = "  deepseek-ai/DeepSeek-V3.2\n"
@@ -414,33 +412,9 @@ func TestResolveCustomModelAppliesReferenceModel(t *testing.T) {
 
 	assert.Equal(t, plain.Name, hinted.Name, "the reference must not change the model identity")
 	assert.Equal(t, plain.Digest, hinted.Digest)
-	assert.Equal(t, generator.ReferenceModelID("deepseek-ai/DeepSeek-V3.2"), hinted.ReferenceModelID)
-	assert.True(t, hinted.ReferenceModelMatched)
 	assert.Equal(t, "deepseek_v32", hinted.Model.GetInferenceParameters().VLLM.ModelRunParams["tool-call-parser"])
 	assert.NotEqual(t, "deepseek_v32", plain.Model.GetInferenceParameters().VLLM.ModelRunParams["tool-call-parser"],
 		"models sharing a config.json but not a reference must not share cached parameters")
-}
-
-func TestResolveCustomModelReportsReferenceModelMatch(t *testing.T) {
-	sizeBytes, err := strconv.ParseInt(testSizeBytes, 10, 64)
-	require.NoError(t, err)
-
-	tests := []struct {
-		id      generator.ReferenceModelID
-		matched bool
-	}{
-		{id: "Qwen/Qwen3-8B", matched: true},
-		// A catalog model that needs no family-specific settings.
-		{id: "microsoft/phi-4", matched: true},
-		{id: "acme/qwn3-8b", matched: false},
-	}
-	for _, tt := range tests {
-		t.Run(string(tt.id), func(t *testing.T) {
-			resolved, err := ResolveCustomModelFromConfig([]byte(testCustomConfigJSON), sizeBytes, generator.WithReferenceModelID(tt.id))
-			require.NoError(t, err)
-			assert.Equal(t, tt.matched, resolved.ReferenceModelMatched)
-		})
-	}
 }
 
 func TestResolveCustomModelRejectsMalformedReferenceModel(t *testing.T) {
