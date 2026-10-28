@@ -661,7 +661,7 @@ func createLocalEmbeddingKaitoVLLMRAGEngine(baseURL, llmPath string) *kaitov1bet
 		uniqueID := fmt.Sprint("rag-", rand.Intn(1000))
 		ragEngineObj = GenerateLocalEmbeddingRAGEngineManifest(uniqueID, namespaceName, "Standard_NV36ads_A10_v5", "BAAI/bge-small-en-v1.5",
 			&metav1.LabelSelector{
-				MatchLabels: map[string]string{"apps": "phi-3"},
+				MatchLabels: map[string]string{"apps": namespaceName + "-" + uniqueID},
 			},
 			&kaitov1beta1.InferenceServiceSpec{
 				URL:               serviceURL,
@@ -681,7 +681,7 @@ func createLocalEmbeddingKaitoVLLMRAGEngineWithStorage(baseURL, llmPath, pvcName
 		uniqueID := fmt.Sprint("rag-", rand.Intn(1000))
 		ragEngineObj = GenerateLocalEmbeddingRAGEngineManifestWithStorage(uniqueID, namespaceName, "Standard_NV36ads_A10_v5", "BAAI/bge-small-en-v1.5",
 			&metav1.LabelSelector{
-				MatchLabels: map[string]string{"apps": "phi-3"},
+				MatchLabels: map[string]string{"apps": namespaceName + "-" + uniqueID},
 			},
 			&kaitov1beta1.InferenceServiceSpec{
 				URL:               serviceURL,
@@ -707,7 +707,7 @@ func createLocalEmbeddingKaitoVLLMRAGEngineWithQdrant(baseURL, llmPath string) *
 		uniqueID := fmt.Sprint("rag-", rand.Intn(1000))
 		ragEngineObj = GenerateLocalEmbeddingRAGEngineManifestWithStorage(uniqueID, namespaceName, "Standard_NV36ads_A10_v5", "BAAI/bge-small-en-v1.5",
 			&metav1.LabelSelector{
-				MatchLabels: map[string]string{"apps": "phi-3"},
+				MatchLabels: map[string]string{"apps": namespaceName + "-" + uniqueID},
 			},
 			&kaitov1beta1.InferenceServiceSpec{
 				URL:               serviceURL,
@@ -733,7 +733,7 @@ func createLocalPreferredNodesRAGEngine(baseURL, preferredNode, instanceType str
 		uniqueID := fmt.Sprint("rag-", rand.Intn(1000))
 		ragEngineObj = GenerateLocalEmbeddingRAGEngineManifestWithPreferredNodes(uniqueID, namespaceName, instanceType, preferredNode, "BAAI/bge-small-en-v1.5",
 			&metav1.LabelSelector{
-				MatchLabels: map[string]string{"apps": "phi-3"},
+				MatchLabels: map[string]string{"apps": ragPoolAppLabel},
 			},
 			&kaitov1beta1.InferenceServiceSpec{
 				URL:               serviceURL,
@@ -753,7 +753,7 @@ func createLocalEmbeddingHFURLRAGEngine() *kaitov1beta1.RAGEngine {
 		uniqueID := fmt.Sprint("rag-", rand.Intn(1000))
 		ragEngineObj = GenerateLocalEmbeddingRAGEngineManifest(uniqueID, namespaceName, "Standard_NV36ads_A10_v5", "BAAI/bge-small-en-v1.5",
 			&metav1.LabelSelector{
-				MatchLabels: map[string]string{"apps": "phi-3"},
+				MatchLabels: map[string]string{"apps": namespaceName + "-" + uniqueID},
 			},
 			&kaitov1beta1.InferenceServiceSpec{
 				URL:               hfURL,
@@ -1714,6 +1714,12 @@ func createAndValidateSecret() {
 		})
 	})
 }
+
+// ragPoolAppLabel is the apps label the RAGEngine e2e workflow puts on the ragpool node pool.
+// Other RAGEngines select apps=<namespace>-<name> instead of a shared label: RAGEngine pods only have
+// label-based node affinity, so a shared label lets them land on another spec's node and get
+// evicted when that spec cleans up.
+const ragPoolAppLabel = "ragpool"
 
 func getRagPoolNode() (*v1.Node, error) {
 	nodeList := &v1.NodeList{}
