@@ -32,7 +32,6 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
-	utilrand "k8s.io/apimachinery/pkg/util/rand"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	kaitov1beta1 "github.com/kaito-project/kaito/api/v1beta1"
@@ -240,11 +239,8 @@ var _ = Describe("RAGEngine", func() {
 		preferredNode, err := getRagPoolNode()
 		Expect(err).NotTo(HaveOccurred(), "Failed to get ragpool node")
 
-		// A preferred node only qualifies when its instance type matches the RAGEngine's,
-		// so follow whatever VM size the e2e workflow used for the ragpool.
-		instanceType := preferredNode.Labels[v1.LabelInstanceTypeStable]
-		Expect(instanceType).NotTo(BeEmpty(), "ragpool node %s has no instance-type label", preferredNode.Name)
-		ragengineObj := createLocalPreferredNodesRAGEngine(clusterIP, preferredNode.Name, instanceType)
+		// Get the preferred node from ragpool
+		ragengineObj := createLocalPreferredNodesRAGEngine(clusterIP, preferredNode)
 
 		defer cleanupResources(workspaceObj, ragengineObj)
 
@@ -661,7 +657,7 @@ func createLocalEmbeddingKaitoVLLMRAGEngine(baseURL, llmPath string) *kaitov1bet
 		uniqueID := fmt.Sprint("rag-", rand.Intn(1000))
 		ragEngineObj = GenerateLocalEmbeddingRAGEngineManifest(uniqueID, namespaceName, "Standard_NV36ads_A10_v5", "BAAI/bge-small-en-v1.5",
 			&metav1.LabelSelector{
-				MatchLabels: map[string]string{"apps": namespaceName + "-" + uniqueID},
+				MatchLabels: map[string]string{"apps": "phi-3"},
 			},
 			&kaitov1beta1.InferenceServiceSpec{
 				URL:               serviceURL,
@@ -681,7 +677,7 @@ func createLocalEmbeddingKaitoVLLMRAGEngineWithStorage(baseURL, llmPath, pvcName
 		uniqueID := fmt.Sprint("rag-", rand.Intn(1000))
 		ragEngineObj = GenerateLocalEmbeddingRAGEngineManifestWithStorage(uniqueID, namespaceName, "Standard_NV36ads_A10_v5", "BAAI/bge-small-en-v1.5",
 			&metav1.LabelSelector{
-				MatchLabels: map[string]string{"apps": namespaceName + "-" + uniqueID},
+				MatchLabels: map[string]string{"apps": "phi-3"},
 			},
 			&kaitov1beta1.InferenceServiceSpec{
 				URL:               serviceURL,
@@ -707,7 +703,7 @@ func createLocalEmbeddingKaitoVLLMRAGEngineWithQdrant(baseURL, llmPath string) *
 		uniqueID := fmt.Sprint("rag-", rand.Intn(1000))
 		ragEngineObj = GenerateLocalEmbeddingRAGEngineManifestWithStorage(uniqueID, namespaceName, "Standard_NV36ads_A10_v5", "BAAI/bge-small-en-v1.5",
 			&metav1.LabelSelector{
-				MatchLabels: map[string]string{"apps": namespaceName + "-" + uniqueID},
+				MatchLabels: map[string]string{"apps": "phi-3"},
 			},
 			&kaitov1beta1.InferenceServiceSpec{
 				URL:               serviceURL,
@@ -726,14 +722,14 @@ func createLocalEmbeddingKaitoVLLMRAGEngineWithQdrant(baseURL, llmPath string) *
 	return ragEngineObj
 }
 
-func createLocalPreferredNodesRAGEngine(baseURL, preferredNode, instanceType string) *kaitov1beta1.RAGEngine {
+func createLocalPreferredNodesRAGEngine(baseURL, preferredNode string) *kaitov1beta1.RAGEngine {
 	ragEngineObj := &kaitov1beta1.RAGEngine{}
 	serviceURL := fmt.Sprintf("http://%s/v1/completions", baseURL)
 	By("Creating RAG with localembedding and kaito vllm inference", func() {
 		uniqueID := fmt.Sprint("rag-", rand.Intn(1000))
-		ragEngineObj = GenerateLocalEmbeddingRAGEngineManifestWithPreferredNodes(uniqueID, namespaceName, instanceType, preferredNode, "BAAI/bge-small-en-v1.5",
+		ragEngineObj = GenerateLocalEmbeddingRAGEngineManifestWithPreferredNodes(uniqueID, namespaceName, "Standard_D8_v3", preferredNode, "BAAI/bge-small-en-v1.5",
 			&metav1.LabelSelector{
-				MatchLabels: map[string]string{"apps": ragPoolAppLabel},
+				MatchLabels: map[string]string{"apps": "phi-3"},
 			},
 			&kaitov1beta1.InferenceServiceSpec{
 				URL:               serviceURL,
@@ -753,7 +749,7 @@ func createLocalEmbeddingHFURLRAGEngine() *kaitov1beta1.RAGEngine {
 		uniqueID := fmt.Sprint("rag-", rand.Intn(1000))
 		ragEngineObj = GenerateLocalEmbeddingRAGEngineManifest(uniqueID, namespaceName, "Standard_NV36ads_A10_v5", "BAAI/bge-small-en-v1.5",
 			&metav1.LabelSelector{
-				MatchLabels: map[string]string{"apps": namespaceName + "-" + uniqueID},
+				MatchLabels: map[string]string{"apps": "phi-3"},
 			},
 			&kaitov1beta1.InferenceServiceSpec{
 				URL:               hfURL,
@@ -966,7 +962,7 @@ func deleteRAGEnginePod(ragengineObj *kaitov1beta1.RAGEngine) error {
 func verifyIndexExists(ragengineObj *kaitov1beta1.RAGEngine, indexName string) error {
 	curlCommand := `curl -s ` + ragengineObj.ObjectMeta.Name + `:80/indexes`
 	opts := PodValidationOptions{
-		PodName:            curlPodName("verify-index-pod"),
+		PodName:            fmt.Sprintf("verify-index-pod-%s", utils.GenerateRandomString()),
 		CurlCommand:        curlCommand,
 		Namespace:          ragengineObj.ObjectMeta.Namespace,
 		ExpectedLogContent: fmt.Sprintf(`"%s"`, indexName),
@@ -1278,7 +1274,7 @@ func createAndValidateIndexPod(ragengineObj *kaitov1beta1.RAGEngine) (map[string
     ]
 }'`
 	opts := PodValidationOptions{
-		PodName:            curlPodName("index-pod"),
+		PodName:            fmt.Sprintf("index-pod-%s", utils.GenerateRandomString()),
 		CurlCommand:        curlCommand,
 		Namespace:          ragengineObj.ObjectMeta.Namespace,
 		ExpectedLogContent: "Kaito is an operator that automates the AI/ML model inference or tuning workload in a Kubernetes cluster",
@@ -1303,7 +1299,7 @@ func createAndValidateUpdateDocumentPod(ragengineObj *kaitov1beta1.RAGEngine, do
     ]
 }'`
 	opts := PodValidationOptions{
-		PodName:            curlPodName("update-document-pod"),
+		PodName:            fmt.Sprintf("update-document-pod-%s", utils.GenerateRandomString()),
 		CurlCommand:        curlCommand,
 		Namespace:          ragengineObj.ObjectMeta.Namespace,
 		ExpectedLogContent: `"updated_documents":[{"doc_id":"` + docID + `"`,
@@ -1319,7 +1315,7 @@ func createAndValidateDeleteDocumentPod(ragengineObj *kaitov1beta1.RAGEngine, do
 -H "Content-Type: application/json" \
 -d '{"doc_ids": ["` + docID + `"]}'`
 	opts := PodValidationOptions{
-		PodName:            curlPodName("delete-document-pod"),
+		PodName:            fmt.Sprintf("delete-document-pod-%s", utils.GenerateRandomString()),
 		CurlCommand:        curlCommand,
 		Namespace:          ragengineObj.ObjectMeta.Namespace,
 		ExpectedLogContent: `"deleted_doc_ids":["` + docID + `"]`,
@@ -1334,7 +1330,7 @@ func createAndValidateDeleteIndexPod(ragengineObj *kaitov1beta1.RAGEngine) error
 	curlCommand := `curl -X DELETE ` + ragengineObj.ObjectMeta.Name + `:80/indexes/kaito \
 -H "Content-Type: application/json"`
 	opts := PodValidationOptions{
-		PodName:            curlPodName("delete-index-pod"),
+		PodName:            fmt.Sprintf("delete-index-pod-%s", utils.GenerateRandomString()),
 		CurlCommand:        curlCommand,
 		Namespace:          ragengineObj.ObjectMeta.Namespace,
 		ExpectedLogContent: "Successfully deleted index kaito",
@@ -1354,7 +1350,7 @@ func createAndValidateRetrievalPod(ragengineObj *kaitov1beta1.RAGEngine, expecte
 	"context_token_ratio": 0.5
 }'`
 	opts := PodValidationOptions{
-		PodName:            curlPodName("retrieval-pod"),
+		PodName:            fmt.Sprintf("retrieval-pod-%s", utils.GenerateRandomString()),
 		CurlCommand:        curlCommand,
 		Namespace:          ragengineObj.ObjectMeta.Namespace,
 		ExpectedLogContent: "\"query\":",
@@ -1517,7 +1513,7 @@ func createAndValidateQueryChatMessagesPod(ragengineObj *kaitov1beta1.RAGEngine,
 }'`
 	}
 	opts := PodValidationOptions{
-		PodName:            curlPodName("chat-completions-pod"),
+		PodName:            fmt.Sprintf("chat-completions-pod-%s", utils.GenerateRandomString()),
 		CurlCommand:        curlCommand,
 		Namespace:          ragengineObj.ObjectMeta.Namespace,
 		ExpectedLogContent: expectedSearchQueries,
@@ -1531,7 +1527,7 @@ func createAndValidateQueryChatMessagesPod(ragengineObj *kaitov1beta1.RAGEngine,
 func createAndValidatePersistPod(ragengineObj *kaitov1beta1.RAGEngine, expectedPersistResult string) error {
 	curlCommand := `curl -X POST ` + ragengineObj.ObjectMeta.Name + `:80/persist/kaito`
 	opts := PodValidationOptions{
-		PodName:            curlPodName("persist-pod"),
+		PodName:            fmt.Sprintf("persist-pod-%s", utils.GenerateRandomString()),
 		CurlCommand:        curlCommand,
 		Namespace:          ragengineObj.ObjectMeta.Namespace,
 		ExpectedLogContent: expectedPersistResult,
@@ -1545,7 +1541,7 @@ func createAndValidatePersistPod(ragengineObj *kaitov1beta1.RAGEngine, expectedP
 func createAndValidateLoadPod(ragengineObj *kaitov1beta1.RAGEngine, expectedLoadResult string) error {
 	curlCommand := `curl -X POST ` + ragengineObj.ObjectMeta.Name + `:80/load/kaito?overwrite=True`
 	opts := PodValidationOptions{
-		PodName:            curlPodName("load-pod"),
+		PodName:            fmt.Sprintf("load-pod-%s", utils.GenerateRandomString()),
 		CurlCommand:        curlCommand,
 		Namespace:          ragengineObj.ObjectMeta.Namespace,
 		ExpectedLogContent: expectedLoadResult,
@@ -1660,13 +1656,6 @@ func createAndValidateAPIPod(ragengineObj *kaitov1beta1.RAGEngine, opts PodValid
 	return nil, nil
 }
 
-// curlPodName returns a name for a curl validation pod. These pods are never
-// deleted and specs in a Ginkgo process share a namespace, so the suffix must be
-// wide enough to avoid AlreadyExists collisions (utils.GenerateRandomString is 0-1000).
-func curlPodName(prefix string) string {
-	return fmt.Sprintf("%s-%s", prefix, utilrand.String(8))
-}
-
 func GenerateCURLPodManifest(podName, curlCommand, namespace string) *v1.Pod {
 	return &v1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
@@ -1715,24 +1704,18 @@ func createAndValidateSecret() {
 	})
 }
 
-// ragPoolAppLabel is the apps label the RAGEngine e2e workflow puts on the ragpool node pool.
-// Other RAGEngines select apps=<namespace>-<name> instead of a shared label: RAGEngine pods only have
-// label-based node affinity, so a shared label lets them land on another spec's node and get
-// evicted when that spec cleans up.
-const ragPoolAppLabel = "ragpool"
-
-func getRagPoolNode() (*v1.Node, error) {
+func getRagPoolNode() (string, error) {
 	nodeList := &v1.NodeList{}
 	err := utils.TestingCluster.KubeClient.List(ctx, nodeList)
 	if err != nil {
-		return nil, fmt.Errorf("failed to list nodes: %v", err)
+		return "", fmt.Errorf("failed to list nodes: %v", err)
 	}
 
-	for i := range nodeList.Items {
-		if strings.Contains(nodeList.Items[i].Name, "ragpool") {
-			return &nodeList.Items[i], nil
+	for _, node := range nodeList.Items {
+		if strings.Contains(node.Name, "ragpool") {
+			return node.Name, nil
 		}
 	}
 
-	return nil, fmt.Errorf("no node containing 'ragpool' found")
+	return "", fmt.Errorf("no node containing 'ragpool' found")
 }
