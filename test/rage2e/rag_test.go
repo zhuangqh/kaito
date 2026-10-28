@@ -1573,6 +1573,10 @@ func createAndValidateAPIPod(ragengineObj *kaitov1beta1.RAGEngine, opts PodValid
 
 	By(fmt.Sprintf("Creating %s", opts.PodName), func() {
 		pod := GenerateCURLPodManifest(opts.PodName, opts.CurlCommand, opts.Namespace)
+		// Curl pods are not deleted and specs in a Ginkgo process share a namespace,
+		// so let the API server pick a unique name instead of relying on a small random suffix.
+		pod.Name = ""
+		pod.GenerateName = opts.PodName + "-"
 		Eventually(func() error {
 			err := utils.TestingCluster.KubeClient.Create(ctx, pod, &client.CreateOptions{})
 			if err != nil {
@@ -1582,6 +1586,8 @@ func createAndValidateAPIPod(ragengineObj *kaitov1beta1.RAGEngine, opts PodValid
 			return nil
 		}, utils.PollTimeout, utils.PollInterval).
 			Should(Succeed(), fmt.Sprintf("Failed to create %s", opts.PodName))
+		opts.PodName = pod.Name
+		GinkgoWriter.Printf("Created pod %s\n", opts.PodName)
 	})
 
 	if opts.WaitForRunning {
