@@ -32,6 +32,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	utilrand "k8s.io/apimachinery/pkg/util/rand"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	kaitov1beta1 "github.com/kaito-project/kaito/api/v1beta1"
@@ -965,7 +966,7 @@ func deleteRAGEnginePod(ragengineObj *kaitov1beta1.RAGEngine) error {
 func verifyIndexExists(ragengineObj *kaitov1beta1.RAGEngine, indexName string) error {
 	curlCommand := `curl -s ` + ragengineObj.ObjectMeta.Name + `:80/indexes`
 	opts := PodValidationOptions{
-		PodName:            fmt.Sprintf("verify-index-pod-%s", utils.GenerateRandomString()),
+		PodName:            curlPodName("verify-index-pod"),
 		CurlCommand:        curlCommand,
 		Namespace:          ragengineObj.ObjectMeta.Namespace,
 		ExpectedLogContent: fmt.Sprintf(`"%s"`, indexName),
@@ -1277,7 +1278,7 @@ func createAndValidateIndexPod(ragengineObj *kaitov1beta1.RAGEngine) (map[string
     ]
 }'`
 	opts := PodValidationOptions{
-		PodName:            fmt.Sprintf("index-pod-%s", utils.GenerateRandomString()),
+		PodName:            curlPodName("index-pod"),
 		CurlCommand:        curlCommand,
 		Namespace:          ragengineObj.ObjectMeta.Namespace,
 		ExpectedLogContent: "Kaito is an operator that automates the AI/ML model inference or tuning workload in a Kubernetes cluster",
@@ -1302,7 +1303,7 @@ func createAndValidateUpdateDocumentPod(ragengineObj *kaitov1beta1.RAGEngine, do
     ]
 }'`
 	opts := PodValidationOptions{
-		PodName:            fmt.Sprintf("update-document-pod-%s", utils.GenerateRandomString()),
+		PodName:            curlPodName("update-document-pod"),
 		CurlCommand:        curlCommand,
 		Namespace:          ragengineObj.ObjectMeta.Namespace,
 		ExpectedLogContent: `"updated_documents":[{"doc_id":"` + docID + `"`,
@@ -1318,7 +1319,7 @@ func createAndValidateDeleteDocumentPod(ragengineObj *kaitov1beta1.RAGEngine, do
 -H "Content-Type: application/json" \
 -d '{"doc_ids": ["` + docID + `"]}'`
 	opts := PodValidationOptions{
-		PodName:            fmt.Sprintf("delete-document-pod-%s", utils.GenerateRandomString()),
+		PodName:            curlPodName("delete-document-pod"),
 		CurlCommand:        curlCommand,
 		Namespace:          ragengineObj.ObjectMeta.Namespace,
 		ExpectedLogContent: `"deleted_doc_ids":["` + docID + `"]`,
@@ -1333,7 +1334,7 @@ func createAndValidateDeleteIndexPod(ragengineObj *kaitov1beta1.RAGEngine) error
 	curlCommand := `curl -X DELETE ` + ragengineObj.ObjectMeta.Name + `:80/indexes/kaito \
 -H "Content-Type: application/json"`
 	opts := PodValidationOptions{
-		PodName:            fmt.Sprintf("delete-index-pod-%s", utils.GenerateRandomString()),
+		PodName:            curlPodName("delete-index-pod"),
 		CurlCommand:        curlCommand,
 		Namespace:          ragengineObj.ObjectMeta.Namespace,
 		ExpectedLogContent: "Successfully deleted index kaito",
@@ -1353,7 +1354,7 @@ func createAndValidateRetrievalPod(ragengineObj *kaitov1beta1.RAGEngine, expecte
 	"context_token_ratio": 0.5
 }'`
 	opts := PodValidationOptions{
-		PodName:            fmt.Sprintf("retrieval-pod-%s", utils.GenerateRandomString()),
+		PodName:            curlPodName("retrieval-pod"),
 		CurlCommand:        curlCommand,
 		Namespace:          ragengineObj.ObjectMeta.Namespace,
 		ExpectedLogContent: "\"query\":",
@@ -1516,7 +1517,7 @@ func createAndValidateQueryChatMessagesPod(ragengineObj *kaitov1beta1.RAGEngine,
 }'`
 	}
 	opts := PodValidationOptions{
-		PodName:            fmt.Sprintf("chat-completions-pod-%s", utils.GenerateRandomString()),
+		PodName:            curlPodName("chat-completions-pod"),
 		CurlCommand:        curlCommand,
 		Namespace:          ragengineObj.ObjectMeta.Namespace,
 		ExpectedLogContent: expectedSearchQueries,
@@ -1530,7 +1531,7 @@ func createAndValidateQueryChatMessagesPod(ragengineObj *kaitov1beta1.RAGEngine,
 func createAndValidatePersistPod(ragengineObj *kaitov1beta1.RAGEngine, expectedPersistResult string) error {
 	curlCommand := `curl -X POST ` + ragengineObj.ObjectMeta.Name + `:80/persist/kaito`
 	opts := PodValidationOptions{
-		PodName:            fmt.Sprintf("persist-pod-%s", utils.GenerateRandomString()),
+		PodName:            curlPodName("persist-pod"),
 		CurlCommand:        curlCommand,
 		Namespace:          ragengineObj.ObjectMeta.Namespace,
 		ExpectedLogContent: expectedPersistResult,
@@ -1544,7 +1545,7 @@ func createAndValidatePersistPod(ragengineObj *kaitov1beta1.RAGEngine, expectedP
 func createAndValidateLoadPod(ragengineObj *kaitov1beta1.RAGEngine, expectedLoadResult string) error {
 	curlCommand := `curl -X POST ` + ragengineObj.ObjectMeta.Name + `:80/load/kaito?overwrite=True`
 	opts := PodValidationOptions{
-		PodName:            fmt.Sprintf("load-pod-%s", utils.GenerateRandomString()),
+		PodName:            curlPodName("load-pod"),
 		CurlCommand:        curlCommand,
 		Namespace:          ragengineObj.ObjectMeta.Namespace,
 		ExpectedLogContent: expectedLoadResult,
@@ -1573,10 +1574,6 @@ func createAndValidateAPIPod(ragengineObj *kaitov1beta1.RAGEngine, opts PodValid
 
 	By(fmt.Sprintf("Creating %s", opts.PodName), func() {
 		pod := GenerateCURLPodManifest(opts.PodName, opts.CurlCommand, opts.Namespace)
-		// Curl pods are not deleted and specs in a Ginkgo process share a namespace,
-		// so let the API server pick a unique name instead of relying on a small random suffix.
-		pod.Name = ""
-		pod.GenerateName = opts.PodName + "-"
 		Eventually(func() error {
 			err := utils.TestingCluster.KubeClient.Create(ctx, pod, &client.CreateOptions{})
 			if err != nil {
@@ -1586,8 +1583,6 @@ func createAndValidateAPIPod(ragengineObj *kaitov1beta1.RAGEngine, opts PodValid
 			return nil
 		}, utils.PollTimeout, utils.PollInterval).
 			Should(Succeed(), fmt.Sprintf("Failed to create %s", opts.PodName))
-		opts.PodName = pod.Name
-		GinkgoWriter.Printf("Created pod %s\n", opts.PodName)
 	})
 
 	if opts.WaitForRunning {
@@ -1663,6 +1658,13 @@ func createAndValidateAPIPod(ragengineObj *kaitov1beta1.RAGEngine, opts PodValid
 		return jsonResp[0], nil
 	}
 	return nil, nil
+}
+
+// curlPodName returns a name for a curl validation pod. These pods are never
+// deleted and specs in a Ginkgo process share a namespace, so the suffix must be
+// wide enough to avoid AlreadyExists collisions (utils.GenerateRandomString is 0-1000).
+func curlPodName(prefix string) string {
+	return fmt.Sprintf("%s-%s", prefix, utilrand.String(8))
 }
 
 func GenerateCURLPodManifest(podName, curlCommand, namespace string) *v1.Pod {
